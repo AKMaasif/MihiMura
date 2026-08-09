@@ -1,0 +1,18 @@
+[project]
+name = "mihimura-backend"
+version = "3.0.0"
+description = "MihiMura production-oriented hackathon reference API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "pydantic>=2.11.0",
+  "pydantic-settings>=2.10.0",
+  "python-dotenv>=1.1.0",
+  "python-multipart>=0.0.20",
+  "httpx>=0.28.0",
+  "google-genai>=1.30.0",
+  "firebase-admin>=7.1.0",
+]
+
