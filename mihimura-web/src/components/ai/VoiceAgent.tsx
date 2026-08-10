@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, CircleStop, Headphones, Mic, MicOff, PhoneCall, PhoneOff, Radio, ShieldCheck, Sparkles, Volume2, Wifi, WifiOff, X } from 'lucide-react';
+import { Bot, CircleStop, Headphones, Mic, MicIcon, MicOff, PhoneCall, PhoneOff, Radio, ShieldCheck, Sparkles, Volume2, Wifi, WifiOff, X } from 'lucide-react';
 import { Button } from '../common/UI';
 import { platformApi } from '../../services/platformApi';
 import './VoiceAgent.css';
@@ -16,44 +16,6 @@ type VoiceAgentProps = {
   onDecision?: (result: any, question: string) => void;
 };
 
-type VoiceTokenResponse = {
-  token: string;
-  expires_at: string;
-  new_session_expires_at: string;
-  model: string;
-  voice: string;
-  language: VoiceLanguage;
-  system_instruction: string;
-};
-
-const LIVE_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained';
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const stride = 0x8000;
-  for (let i = 0; i < bytes.length; i += stride) {
-    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + stride, bytes.length)));
-  }
-  return btoa(binary);
-}
-
-function base64ToInt16(base64: string): Int16Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return new Int16Array(bytes.buffer);
-}
-
-function mergeTranscript(previous: string, incoming: string): string {
-  const next = incoming.trim();
-  if (!next) return previous;
-  if (!previous) return next;
-  if (next.startsWith(previous)) return next;
-  if (previous.endsWith(next)) return previous;
-  return `${previous} ${next}`.replace(/\s+/g, ' ').trim();
-}
-
 function projectContext(project: any, profile: any, language: VoiceLanguage) {
   return {
     province: project?.province || '',
@@ -68,56 +30,28 @@ function projectContext(project: any, profile: any, language: VoiceLanguage) {
   };
 }
 
-class PcmPlayer {
-  private context: AudioContext | null = null;
-  private nextStart = 0;
-  private sources = new Set<AudioBufferSourceNode>();
+function recognitionLanguage(language: VoiceLanguage) {
+  if (language === 'Sinhala') return 'si-LK';
+  // The working reference project uses ta-IN for Chrome speech recognition.
+  if (language === 'Tamil') return 'ta-IN';
+  return 'en-US';
+}
 
-  async ensure() {
-    if (!this.context || this.context.state === 'closed') this.context = new AudioContext();
-    if (this.context.state === 'suspended') await this.context.resume();
-    this.nextStart = Math.max(this.nextStart, this.context.currentTime);
-    return this.context;
-  }
+function greetingFor(language: VoiceLanguage) {
+  if (language === 'Sinhala') return 'ආයුබෝවන්! මම මිහිමුර. ඔබේ ගොවිපල ගැන මොනවද දැනගන්න ඕනේ?';
+  if (language === 'Tamil') return 'வணக்கம்! நான் மிஹிமுர. உங்கள் பண்ணையைப் பற்றி என்ன தெரிந்துகொள்ள விரும்புகிறீர்கள்?';
+  return 'Hello! I am MihiMura. What would you like to know about your farm?';
+}
 
-  async enqueue(base64: string) {
-    const context = await this.ensure();
-    const pcm = base64ToInt16(base64);
-    if (!pcm.length) return;
-
-    const buffer = context.createBuffer(1, pcm.length, 24000);
-    const channel = buffer.getChannelData(0);
-    for (let i = 0; i < pcm.length; i += 1) channel[i] = pcm[i] / 32768;
-
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.connect(context.destination);
-    const startAt = Math.max(context.currentTime + 0.015, this.nextStart);
-    source.start(startAt);
-    this.nextStart = startAt + buffer.duration;
-    this.sources.add(source);
-    source.onended = () => this.sources.delete(source);
-  }
-
-  clear() {
-    for (const source of this.sources) {
-      try { source.stop(); } catch { /* already stopped */ }
-    }
-    this.sources.clear();
-    if (this.context) this.nextStart = this.context.currentTime;
-  }
-
-  async close() {
-    this.clear();
-    if (this.context && this.context.state !== 'closed') await this.context.close();
-    this.context = null;
-    this.nextStart = 0;
-  }
+function errorSpeechFor(language: VoiceLanguage) {
+  if (language === 'Sinhala') return 'සමාවන්න, පිළිතුර ලබාගැනීමේදී ගැටලුවක් ඇති වුණා. කරුණාකර නැවත උත්සාහ කරන්න.';
+  if (language === 'Tamil') return 'மன்னிக்கவும், பதிலைப் பெறுவதில் சிக்கல் ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.';
+  return 'Sorry, I had trouble getting that answer. Please try again.';
 }
 
 function statusCopy(status: VoiceStatus, muted: boolean) {
   if (muted) return 'Microphone muted';
-  if (status === 'connecting') return 'Connecting securely…';
+  if (status === 'connecting') return 'Starting voice conversation…';
   if (status === 'thinking') return 'Understanding your question…';
   if (status === 'tool') return 'Checking farm, weather and safety evidence…';
   if (status === 'speaking') return 'MihiMura is speaking';
@@ -128,28 +62,27 @@ function statusCopy(status: VoiceStatus, muted: boolean) {
 
 export function VoiceAgent({ language, project, profile, onDecision }: VoiceAgentProps) {
   const [open, setOpen] = useState(false);
+  const [sessionActive, setSessionActive] = useState(false);
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState('');
-  const [voiceName, setVoiceName] = useState('Gacrux');
+  const [voiceName] = useState('Gacrux');
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [liveUser, setLiveUser] = useState('');
   const [liveAssistant, setLiveAssistant] = useState('');
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const captureContextRef = useRef<AudioContext | null>(null);
-  const captureNodeRef = useRef<AudioWorkletNode | null>(null);
-  const silentGainRef = useRef<GainNode | null>(null);
-  const playerRef = useRef(new PcmPlayer());
+  const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<number | null>(null);
+  const sessionActiveRef = useRef(false);
+  const mutedRef = useRef(false);
+  const processingRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   const liveUserRef = useRef('');
   const liveAssistantRef = useRef('');
-  const closedByUserRef = useRef(false);
-  const mutedRef = useRef(false);
-  const setupCompleteRef = useRef(false);
-  const toolBusyRef = useRef(false);
+  const processQuestionRef = useRef<(question: string) => void>(() => undefined);
 
   const contextLabel = useMemo(() => project
     ? `${project.farm_name || 'Farm'} · ${project.crop || 'Crop'} · ${project.stage || 'Current stage'}`
@@ -161,13 +94,15 @@ export function VoiceAgent({ language, project, profile, onDecision }: VoiceAgen
     return () => window.clearInterval(id);
   }, [sessionStartedAt]);
 
-  useEffect(() => {
-    liveUserRef.current = liveUser;
-  }, [liveUser]);
+  useEffect(() => { liveUserRef.current = liveUser; }, [liveUser]);
+  useEffect(() => { liveAssistantRef.current = liveAssistant; }, [liveAssistant]);
 
-  useEffect(() => {
-    liveAssistantRef.current = liveAssistant;
-  }, [liveAssistant]);
+  const clearSilenceTimer = () => {
+    if (silenceTimeoutRef.current !== null) {
+      window.clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+  };
 
   const pushTranscript = (role: TranscriptItem['role'], text: string) => {
     const clean = text.trim();
@@ -183,339 +118,340 @@ export function VoiceAgent({ language, project, profile, onDecision }: VoiceAgen
     return text;
   };
 
-  const finalizeAssistant = () => {
-    const text = liveAssistantRef.current.trim();
+  const finalizeAssistant = (fallback = '') => {
+    const text = (liveAssistantRef.current || fallback).trim();
     if (text) pushTranscript('assistant', text);
     setLiveAssistant('');
     liveAssistantRef.current = '';
+    return text;
   };
 
-  const stopCapture = async (sendEnd = true) => {
-    const ws = wsRef.current;
-    if (sendEnd && ws?.readyState === WebSocket.OPEN && setupCompleteRef.current) {
-      try { ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } })); } catch { /* ignore */ }
+  const stopRecognition = (abort = true) => {
+    clearSilenceTimer();
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!recognition) return;
+    try {
+      if (abort) recognition.abort();
+      else recognition.stop();
+    } catch {
+      // Recognition may already have ended.
     }
-    captureNodeRef.current?.disconnect();
-    silentGainRef.current?.disconnect();
-    micStreamRef.current?.getTracks().forEach(track => track.stop());
-    micStreamRef.current = null;
-    captureNodeRef.current = null;
-    silentGainRef.current = null;
-    if (captureContextRef.current && captureContextRef.current.state !== 'closed') {
-      await captureContextRef.current.close().catch(() => undefined);
-    }
-    captureContextRef.current = null;
   };
 
-  const startCapture = async () => {
-    if (micStreamRef.current) return;
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN || !setupCompleteRef.current) return;
+  const stopPlayback = () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch { /* ignore */ }
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  };
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1,
-      },
-    });
+  const playBlob = (blob: Blob) => new Promise<void>((resolve, reject) => {
+    stopPlayback();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audioUrlRef.current = url;
+    audioRef.current = audio;
 
-    const context = new AudioContext({ latencyHint: 'interactive' });
-    await context.audioWorklet.addModule('/pcm-capture-worklet.js');
-    const source = context.createMediaStreamSource(stream);
-    const node = new AudioWorkletNode(context, 'mihimura-pcm-capture');
-    const silent = context.createGain();
-    silent.gain.value = 0;
-
-    node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
-      const socket = wsRef.current;
-      if (mutedRef.current || toolBusyRef.current || !event.data || socket?.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify({
-        realtimeInput: {
-          audio: {
-            data: arrayBufferToBase64(event.data),
-            mimeType: 'audio/pcm;rate=16000',
-          },
-        },
-      }));
+    const cleanup = () => {
+      if (audioRef.current === audio) audioRef.current = null;
+      if (audioUrlRef.current === url) {
+        URL.revokeObjectURL(url);
+        audioUrlRef.current = null;
+      }
     };
 
-    source.connect(node);
-    node.connect(silent);
-    silent.connect(context.destination);
+    audio.onended = () => { cleanup(); resolve(); };
+    audio.onerror = () => { cleanup(); reject(new Error('Audio playback failed')); };
+    audio.play().catch(err => { cleanup(); reject(err); });
+  });
 
-    micStreamRef.current = stream;
-    captureContextRef.current = context;
-    captureNodeRef.current = node;
-    silentGainRef.current = silent;
-    if (context.state === 'suspended') await context.resume();
+  const speakWithBrowserFallback = (text: string) => new Promise<void>((resolve) => {
+    if (!('speechSynthesis' in window)) {
+      resolve();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'Sinhala' ? 'si-LK' : language === 'Tamil' ? 'ta-LK' : 'en-LK';
+    utterance.rate = 1;
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
+  });
+
+  const speakText = async (text: string) => {
+    if (!text.trim()) return;
+    console.log('[VOICE] Requesting Gemini TTS');
+    try {
+      const blob = await platformApi.voiceTts(text, language);
+      console.log('[VOICE] Gemini TTS audio received', { bytes: blob.size, type: blob.type });
+      await playBlob(blob);
+      console.log('[VOICE] Gemini TTS playback completed');
+    } catch (exc) {
+      console.warn('[VOICE] Gemini TTS failed; using browser speech fallback', exc);
+      await speakWithBrowserFallback(text);
+    }
   };
 
-  const handleToolCall = async (toolCall: any) => {
-    const socket = wsRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    const calls = Array.isArray(toolCall?.functionCalls) ? toolCall.functionCalls : [];
-    if (!calls.length) return;
+  const startListening = () => {
+    if (!sessionActiveRef.current || mutedRef.current || processingRef.current || recognitionRef.current) return;
 
-    toolBusyRef.current = true;
-    setStatus('tool');
-    const responses: any[] = [];
-
-    for (const call of calls) {
-      if (call.name !== 'consult_mihimura') {
-        responses.push({ name: call.name, id: call.id, response: { error: 'Unsupported tool' } });
-        continue;
-      }
-
-      const question = String(call.args?.question || liveUserRef.current || '').trim();
-      finalizeUser(question);
-
-      try {
-        const result = await platformApi.ask(question, projectContext(project, profile, language));
-        onDecision?.(result, question);
-        responses.push({
-          name: call.name,
-          id: call.id,
-          response: {
-            result: {
-              summary: result.summary,
-              recommended_action: result.recommended_action,
-              why: result.why,
-              confidence: result.confidence,
-              risk_level: result.risk_level,
-              alternatives: result.alternatives || [],
-              do_not_do: result.do_not_do || [],
-              confirmation_required: Boolean(result.confirmation_required),
-              follow_up: result.follow_up,
-              counterfactual: result.counterfactual,
-              sources: (result.sources || []).slice(0, 5),
-            },
-          },
-        });
-      } catch (exc) {
-        const message = exc instanceof Error ? exc.message : 'MihiMura tool request failed';
-        responses.push({ name: call.name, id: call.id, response: { error: message } });
-      }
-    }
-
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
-      setStatus('thinking');
-    }
-    toolBusyRef.current = false;
-  };
-
-  const handleMessage = async (event: MessageEvent) => {
-    let message: any;
-    try { message = JSON.parse(String(event.data)); } catch { return; }
-
-    if (message.setupComplete) {
-      setupCompleteRef.current = true;
-      setStatus('listening');
-      setSessionStartedAt(Date.now());
-      setElapsed(0);
-      await startCapture();
-      const greeting = language === 'Sinhala'
-        ? 'කෙටි ස්වභාවික ආයුබෝවන් පණිවිඩයක් කියලා, මම කතා කරනකම් අහගෙන ඉන්න.'
-        : language === 'Tamil'
-          ? 'ஒரு சுருக்கமான இயல்பான வணக்கத்தைச் சொல்லி, நான் பேசும் வரை கேட்டு இருங்கள்.'
-          : 'Give one short natural greeting, then listen until I speak.';
-      wsRef.current?.send(JSON.stringify({ realtimeInput: { text: greeting } }));
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Realtime speech recognition is not supported in this browser. Please use Chrome or Edge.');
+      setStatus('error');
+      setSessionActive(false);
+      sessionActiveRef.current = false;
       return;
     }
 
-    if (message.toolCall) {
-      void handleToolCall(message.toolCall);
-    }
+    stopPlayback();
+    clearSilenceTimer();
+    setError('');
+    setLiveUser('');
+    liveUserRef.current = '';
 
-    const content = message.serverContent;
-    if (!content) return;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = recognitionLanguage(language);
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
-    if (content.interrupted) {
-      playerRef.current.clear();
-      finalizeAssistant();
+    let finalTranscript = '';
+
+    recognition.onstart = () => {
+      console.log('[VOICE] SpeechRecognition started', recognition.lang);
       setStatus('listening');
-    }
-
-    if (content.inputTranscription?.text) {
-      const next = mergeTranscript(liveUserRef.current, content.inputTranscription.text);
-      liveUserRef.current = next;
-      setLiveUser(next);
-      if (status !== 'tool') setStatus('listening');
-    }
-
-    if (content.outputTranscription?.text) {
-      if (liveUserRef.current) finalizeUser();
-      const next = mergeTranscript(liveAssistantRef.current, content.outputTranscription.text);
-      liveAssistantRef.current = next;
-      setLiveAssistant(next);
-    }
-
-    if (content.modelTurn?.parts) {
-      for (const part of content.modelTurn.parts) {
-        if (part.inlineData?.data) {
-          if (liveUserRef.current) finalizeUser();
-          setStatus('speaking');
-          void playerRef.current.enqueue(part.inlineData.data);
+      clearSilenceTimer();
+      silenceTimeoutRef.current = window.setTimeout(() => {
+        if (recognitionRef.current === recognition && !finalTranscript.trim()) {
+          console.log('[VOICE] Initial silence timeout');
+          try { recognition.stop(); } catch { /* ignore */ }
         }
+      }, 7000);
+    };
+
+    recognition.onresult = (event: any) => {
+      clearSilenceTimer();
+      let finalText = '';
+      let interimText = '';
+
+      for (let i = 0; i < event.results.length; i += 1) {
+        const text = String(event.results[i][0]?.transcript || '');
+        if (event.results[i].isFinal) finalText += text;
+        else interimText += text;
+      }
+
+      const currentText = `${finalText} ${interimText}`.replace(/\s+/g, ' ').trim();
+      finalTranscript = currentText;
+      liveUserRef.current = currentText;
+      setLiveUser(currentText);
+
+      if (currentText) {
+        console.log('[VOICE] Heard:', currentText);
+        silenceTimeoutRef.current = window.setTimeout(() => {
+          if (recognitionRef.current === recognition) {
+            console.log('[VOICE] End-of-speech silence detected; submitting');
+            try { recognition.stop(); } catch { /* ignore */ }
+          }
+        }, 1800);
+      }
+    };
+
+    recognition.onend = () => {
+      clearSilenceTimer();
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      const question = finalTranscript.trim();
+      console.log('[VOICE] SpeechRecognition ended', { hasQuestion: Boolean(question), question });
+
+      if (!sessionActiveRef.current || mutedRef.current) return;
+
+      if (question) {
+        processQuestionRef.current(question);
+      } else {
+        window.setTimeout(() => startListening(), 450);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      clearSilenceTimer();
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      console.error('[VOICE] SpeechRecognition error:', event.error);
+
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setError('Microphone access was denied. Allow microphone permission in your browser and start Voice Mode again.');
+        setStatus('error');
+        setSessionActive(false);
+        sessionActiveRef.current = false;
+        return;
+      }
+
+      if (event.error === 'network') {
+        setError('Browser speech recognition reported a network error. Check the connection and try again.');
+      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        setError(`Voice recognition error: ${event.error || 'unknown error'}`);
+      }
+
+      if (sessionActiveRef.current && !mutedRef.current) {
+        window.setTimeout(() => startListening(), 650);
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (exc) {
+      recognitionRef.current = null;
+      console.error('[VOICE] Could not start SpeechRecognition', exc);
+      setError('Could not start browser speech recognition. Try Chrome or Edge and check microphone permission.');
+      setStatus('error');
+    }
+  };
+
+  const processQuestion = async (question: string) => {
+    if (!sessionActiveRef.current || processingRef.current) return;
+    processingRef.current = true;
+    stopRecognition(true);
+    finalizeUser(question);
+    setError('');
+    setStatus('tool');
+    console.log('[VOICE] Sending question to existing MihiMura /ask-ai:', question);
+
+    try {
+      const result = await platformApi.ask(question, projectContext(project, profile, language));
+      console.log('[VOICE] MihiMura /ask-ai completed', { provider: result?.provider, confidence: result?.confidence });
+      onDecision?.(result, question);
+
+      const answer = String(result?.summary || result?.recommended_action || 'MihiMura completed the analysis.').trim();
+      liveAssistantRef.current = answer;
+      setLiveAssistant(answer);
+      setStatus('speaking');
+      await speakText(answer);
+      finalizeAssistant(answer);
+    } catch (exc) {
+      console.error('[VOICE] MihiMura voice question failed', exc);
+      const message = exc instanceof Error ? exc.message : 'Could not reach the AI service';
+      setError(message);
+      const spoken = errorSpeechFor(language);
+      liveAssistantRef.current = spoken;
+      setLiveAssistant(spoken);
+      setStatus('speaking');
+      await speakWithBrowserFallback(spoken);
+      finalizeAssistant(spoken);
+    } finally {
+      processingRef.current = false;
+      if (sessionActiveRef.current && !mutedRef.current) {
+        setStatus('listening');
+        window.setTimeout(() => startListening(), 400);
       }
     }
+  };
 
-    if (content.turnComplete) {
-      finalizeAssistant();
+  processQuestionRef.current = processQuestion;
+
+  const startSession = async () => {
+    if (sessionActiveRef.current) {
+      setOpen(true);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setOpen(true);
+      setError('Voice recognition is not supported in this browser. Please use Chrome or Edge.');
+      setStatus('error');
+      return;
+    }
+
+    console.log('[VOICE] Starting reference-style voice mode (Browser STT → /ask-ai → Gemini TTS)');
+    setOpen(true);
+    setError('');
+    setSessionActive(true);
+    sessionActiveRef.current = true;
+    setStatus('connecting');
+    setSessionStartedAt(Date.now());
+    setElapsed(0);
+    mutedRef.current = false;
+    setMuted(false);
+
+    const greeting = greetingFor(language);
+    liveAssistantRef.current = greeting;
+    setLiveAssistant(greeting);
+    setStatus('speaking');
+    await speakText(greeting);
+    finalizeAssistant(greeting);
+
+    if (sessionActiveRef.current && !mutedRef.current) {
       setStatus('listening');
+      startListening();
     }
   };
 
   const endSession = async (closePanel = false) => {
-    closedByUserRef.current = true;
-    setupCompleteRef.current = false;
-    toolBusyRef.current = false;
-    await stopCapture(false);
-    await playerRef.current.close();
-    if (wsRef.current) {
-      try { wsRef.current.close(1000, 'User ended voice session'); } catch { /* ignore */ }
-    }
-    wsRef.current = null;
+    console.log('[VOICE] Ending voice session');
+    sessionActiveRef.current = false;
+    setSessionActive(false);
+    processingRef.current = false;
+    stopRecognition(true);
+    stopPlayback();
     finalizeUser();
     finalizeAssistant();
-    setStatus('idle');
     mutedRef.current = false;
     setMuted(false);
+    setStatus('idle');
     setSessionStartedAt(null);
     if (closePanel) setOpen(false);
   };
 
-  const startSession = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError('This browser does not provide microphone access. Use a current Chrome, Edge, Safari, or supported mobile browser.');
-      setStatus('error');
-      return;
-    }
-
-    setOpen(true);
-    setError('');
-    setStatus('connecting');
-    closedByUserRef.current = false;
-    setupCompleteRef.current = false;
-
-    try {
-      const session = await platformApi.voiceSessionToken({ language, project_id: project?.id || '' }) as VoiceTokenResponse;
-      setVoiceName(session.voice || 'Gacrux');
-      const socket = new WebSocket(`${LIVE_URL}?access_token=${encodeURIComponent(session.token)}`);
-      wsRef.current = socket;
-
-      socket.onopen = () => {
-        const setup = {
-          setup: {
-            model: `models/${session.model}`,
-            responseModalities: ['AUDIO'],
-            systemInstruction: { parts: [{ text: session.system_instruction }] },
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: session.voice || 'Gacrux' },
-              },
-            },
-            inputAudioTranscription: {},
-            outputAudioTranscription: {},
-            realtimeInputConfig: {
-              automaticActivityDetection: {
-                disabled: false,
-                startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
-                endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
-                prefixPaddingMs: 300,
-                silenceDurationMs: 1000,
-              },
-              activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
-            },
-            tools: [{
-              functionDeclarations: [{
-                name: 'consult_mihimura',
-                description: 'Use this for every agriculture, farm, crop, weather, irrigation, fertilizer, pesticide, disease, task, field operation, safety, or recommendation question. It runs MihiMura\'s authenticated multi-agent decision pipeline and returns grounded evidence.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    question: {
-                      type: 'STRING',
-                      description: 'The farmer\'s complete question, preserving crop, timing, quantities and conditions they mentioned.',
-                    },
-                  },
-                  required: ['question'],
-                },
-              }],
-            }],
-          },
-        };
-        socket.send(JSON.stringify(setup));
-      };
-
-      socket.onmessage = event => { void handleMessage(event); };
-      socket.onerror = () => {
-        setError('The realtime voice connection failed. Check the backend Gemini configuration and network connection.');
-        setStatus('error');
-      };
-      socket.onclose = event => {
-        setupCompleteRef.current = false;
-        void stopCapture(false);
-        playerRef.current.clear();
-        if (!closedByUserRef.current) {
-          setError(event.reason || 'The live voice session ended. Start a new session to continue.');
-          setStatus('error');
-        }
-      };
-    } catch (exc) {
-      const message = exc instanceof Error ? exc.message : 'Could not start voice mode';
-      setError(message);
-      setStatus('error');
-    }
-  };
-
   const toggleMute = async () => {
-    const next = !muted;
+    const next = !mutedRef.current;
     mutedRef.current = next;
     setMuted(next);
+
     if (next) {
-      await stopCapture(true);
-    } else {
-      try {
-        await startCapture();
-        setStatus('listening');
-      } catch (exc) {
-        setError(exc instanceof Error ? exc.message : 'Could not reopen microphone');
-        setStatus('error');
-      }
+      stopRecognition(true);
+    } else if (sessionActiveRef.current && !processingRef.current) {
+      setStatus('listening');
+      startListening();
     }
   };
 
-  useEffect(() => () => { void endSession(false); }, []);
+  useEffect(() => () => {
+    sessionActiveRef.current = false;
+    stopRecognition(true);
+    stopPlayback();
+  }, []);
 
-  // A live session is language-bound through its system instruction. End it if
-  // the global app language changes so the next session starts cleanly.
   const previousLanguage = useRef(language);
   useEffect(() => {
     if (previousLanguage.current !== language) {
       previousLanguage.current = language;
-      if (wsRef.current) {
+      if (sessionActiveRef.current) {
         void endSession(false);
-        setError('Language changed. Start voice mode again to continue in the new language.');
+        setError('Language changed. Start voice mode again to continue in the selected language.');
       }
     }
   }, [language]);
 
   const timer = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
-  const active = status !== 'idle' && status !== 'error';
+  const active = sessionActive && status !== 'error';
 
   return <>
     <button type="button" className="voice-launch" onClick={() => active ? setOpen(true) : void startSession()}>
       <span><Mic /></span>
-      <div><b>Voice conversation</b><small>Hands-free · native audio · {language}</small></div>
+      <div><b>Voice conversation</b><small>Hands-free · Gemini TTS · {language}</small></div>
     </button>
 
     {open && <div className="voice-modal-backdrop" role="presentation">
-      <section className="voice-modal" role="dialog" aria-modal="true" aria-label="MihiMura realtime voice agent">
+      <section className="voice-modal" role="dialog" aria-modal="true" aria-label="MihiMura voice agent">
         <header className="voice-modal-head">
-          <div className="voice-brand"><span><Bot /></span><div><b>MihiMura Voice</b><small>Realtime agricultural companion</small></div></div>
+          <div className="voice-brand"><span><Bot /></span><div><b>MihiMura Voice</b><small></small></div></div>
           <div className="voice-head-actions">
             <span className={`voice-live-pill ${active ? 'online' : ''}`}><i />{active ? 'Live' : 'Offline'}</span>
             <button type="button" onClick={() => void endSession(true)} aria-label="End and close voice session"><X /></button>
@@ -524,7 +460,7 @@ export function VoiceAgent({ language, project, profile, onDecision }: VoiceAgen
 
         <div className="voice-session-body">
           <div className="voice-orb-zone">
-            <div className={`voice-orb ${status}`}><span className="voice-orb-ring one"/><span className="voice-orb-ring two"/><div>{status === 'speaking' ? <Volume2 /> : status === 'tool' || status === 'thinking' ? <Sparkles /> : muted ? <MicOff /> : <Mic />}</div></div>
+            <div className={`voice-orb ${status}`}><span className="voice-orb-ring one"/><span className="voice-orb-ring two"/><div>{status === 'speaking' ? <Volume2 /> : status === 'tool' || status === 'thinking' ? <MicIcon/> : muted ? <MicOff /> : <Mic />}</div></div>
             <h2>{statusCopy(status, muted)}</h2>
             <p>{contextLabel}</p>
             <div className="voice-session-meta"><span><Radio /> {voiceName}</span><span><Headphones /> {language}</span><span>{timer}</span></div>
@@ -534,12 +470,12 @@ export function VoiceAgent({ language, project, profile, onDecision }: VoiceAgen
 
           <div className="voice-tool-strip">
             <span className={status === 'tool' ? 'active' : ''}><ShieldCheck/> Multi-agent grounding</span>
-            <span><Wifi/> Live audio</span>
-            <span><CircleStop/> Barge-in enabled</span>
+            <span><Wifi/> Browser speech input</span>
+            <span><CircleStop/> Auto turn detection</span>
           </div>
 
           <div className="voice-transcript" aria-live="polite">
-            {transcript.length === 0 && !liveUser && !liveAssistant && <div className="voice-transcript-empty"><Mic/><b>Start speaking naturally</b><p>You do not need to press Send. MihiMura detects the end of your turn and answers by voice.</p></div>}
+            {transcript.length === 0 && !liveUser && !liveAssistant && <div className="voice-transcript-empty"><Mic/><b>Start speaking naturally</b><p>MihiMura detects a short pause, submits the transcript to the existing AI agents, and speaks the grounded answer.</p></div>}
             {transcript.map(item => <div key={item.id} className={`voice-line ${item.role}`}><span>{item.role === 'assistant' ? 'MihiMura' : item.role === 'user' ? 'You' : 'System'}</span><p>{item.text}</p></div>)}
             {liveUser && <div className="voice-line user live"><span>You · listening</span><p>{liveUser}</p></div>}
             {liveAssistant && <div className="voice-line assistant live"><span>MihiMura · speaking</span><p>{liveAssistant}</p></div>}

@@ -6969,10 +6969,14 @@ label em {
   width: 11px
 }
 
-.stage-track span {
+.stage-track span,
+.stage-track b {
   display: block;
   margin-top: 5px;
-  font-size: 6px
+  font-size: 10px; /* Increased font-size for better readability */
+  font-weight: 500;
+  text-align: center;
+  color: #a0aaa3;
 }
 
 .stage-track .done {
@@ -14798,4 +14802,79 @@ html.high-contrast .workspace-card {
     max-width: 275px !important;
   }
 
+}
+
+/* =========================================================
+   MIHIMURA WELCOME MAP — FULL ISLAND FIT FIX
+   Paste this at the VERY END of src/index.css
+   ========================================================= */
+
+/*
+  The Sri Lanka SVG has a tall aspect ratio: 450 x 793.
+  On small screens, fitting it by width can make it taller than
+  the visible map area. This patch gives the SVG an explicit,
+  safe responsive width and lets height follow its aspect ratio.
+*/
+
+@media (max-width: 980px) {
+  .welcome-visual .hero-glass.map {
+    height: 620px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 62px 10px 10px !important;
+    padding: 44px 10px 10px !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(240px, 40vw, 275px) !important;
+    height: auto !important;
+
+    max-width: calc(100% - 24px) !important;
+    max-height: none !important;
+
+    margin: auto !important;
+    align-self: center !important;
+    justify-self: center !important;
+
+    display: block !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .welcome-visual .hero-glass.map {
+    height: 570px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 58px 8px 8px !important;
+    padding: 42px 8px 10px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(225px, 62vw, 255px) !important;
+    height: auto !important;
+
+    max-width: calc(100% - 20px) !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .welcome-visual .hero-glass.map {
+    height: 540px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 57px 7px 7px !important;
+    padding: 40px 7px 8px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(215px, 60vw, 240px) !important;
+    height: auto !important;
+  }
 }

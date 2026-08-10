@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Response
 from pydantic import BaseModel, Field
 from app.agents.orchestrator import orchestrator
 from app.agents.vision import analyze_crop_images
@@ -11,7 +11,7 @@ from app.services.dashboard import get_dashboard_payload
 from app.services.weather import get_weather
 from app.services.climate_history import get_nasa_power
 from app.services.satellite import catalog_search, configured as satellite_configured
-from app.services.voice import create_voice_session_token
+from app.services.voice import create_voice_session_token, synthesize_voice
 from app.services.platform import *
 
 router=APIRouter()
@@ -20,6 +20,9 @@ class AIRequest(BaseModel): question:str; context:dict[str,Any]=Field(default_fa
 class VoiceSessionRequest(BaseModel):
     language: str = "English"
     project_id: str | None = None
+class VoiceTTSRequest(BaseModel):
+    text: str
+    language: str = "English"
 class TaskPatch(BaseModel): status:str|None=None; due_at:str|None=None; assigned_to:str|None=None; completion_note:str|None=None; schedule_reason:str|None=None
 
 @router.get('/health')
@@ -150,6 +153,22 @@ def voice_session_token(
             503,
             str(exc)
         ) from exc
+
+@router.post('/voice/tts')
+def voice_tts(
+    req: VoiceTTSRequest,
+    u=Depends(get_current_user)
+):
+    try:
+        audio, media_type = synthesize_voice(req.text, req.language)
+        return Response(
+            content=audio,
+            media_type=media_type,
+            headers={'Cache-Control': 'no-store'}
+        )
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+
 @router.post('/ask-ai')
 def ask_ai(req:AIRequest,u=Depends(get_current_user)):
     context={"location":u.get('district') or 'Ampara',"language":u.get('language') or 'English',**req.context}; result=orchestrator.process_farmer_request(req.question.strip(),context,u['uid']); run_id=record_agent_run(u['uid'],req.question,result,context); result['run_id']=run_id; audit(u['uid'],'ai_recommendation','chat',{"question":req.question,"provider":result.get('provider'),"confidence":result.get('confidence'),"run_id":run_id}); return result

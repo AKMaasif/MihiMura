@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_LIVE_MODEL: str = "gemini-3.1-flash-live-preview"
     GEMINI_LIVE_VOICE: str = "Gacrux"
+    GEMINI_TTS_MODEL: str = "gemini-3.1-flash-tts-preview"
+    GEMINI_TTS_VOICE: str = "Gacrux"
 
     FIREBASE_SERVICE_ACCOUNT_PATH: Optional[str] = None
     FIREBASE_PROJECT_ID: Optional[str] = None

@@ -67,6 +67,18 @@ export const platformApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  voiceTts: async (text: string, language: string) => {
+    const response = await fetch(`${BASE}/voice/tts`, {
+      method: 'POST',
+      headers: await headers(true),
+      body: JSON.stringify({ text, language }),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || `Voice TTS request failed: ${response.status}`);
+    }
+    return response.blob();
+  },
   ask: (question: string, context: any = {}) => request('/ask-ai', { method: 'POST', body: JSON.stringify({ question, context }) }),
   diagnose: async (files: File[], crop_hint: string, symptoms: string, project_id = '') => { const fd = new FormData(); files.slice(0, 4).forEach(file => fd.append('images', file)); fd.append('crop_hint', crop_hint); fd.append('symptoms', symptoms); fd.append('project_id', project_id); return request('/diagnose-image', { method: 'POST', body: fd }); }
 };
