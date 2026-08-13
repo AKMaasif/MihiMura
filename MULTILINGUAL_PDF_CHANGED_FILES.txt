@@ -1,0 +1,25 @@
+MihiMura multilingual PDF correction - changed files
+
+1. mihimura-backend/app/services/reports.py
+   - Gemini schema-constrained JSON report generation
+   - validated Sinhala/Tamil chunk translation fallback
+   - Unicode font path hardening
+   - multilingual PDF runtime health diagnostic
+
+2. mihimura-backend/app/api/endpoints.py
+   - meaningful report error handling (400/503/500)
+   - multilingual_pdf status included in /api/v1/health
+
+3. mihimura-backend/requirements.txt
+   - added uharfbuzz for complex-script shaping
+
+4. mihimura-backend/pyproject.toml
+   - added uharfbuzz dependency
+
+5. mihimura-backend/tests/multilingual_report_pipeline_test.py
+   - offline Sinhala/Tamil report-localization regression test
+
+6. MULTILINGUAL_PDF_FIX.md
+   - deployment and verification instructions
+
+No frontend report button/API logic was changed.

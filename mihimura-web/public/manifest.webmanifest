@@ -1,0 +1,9 @@
+{
+  "name":"MihiMura Climate-Resilient Agriculture",
+  "short_name":"MihiMura",
+  "start_url":"/#/welcome",
+  "display":"standalone",
+  "background_color":"#f4f8f3",
+  "theme_color":"#163f2a",
+  "icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml"}]
+}

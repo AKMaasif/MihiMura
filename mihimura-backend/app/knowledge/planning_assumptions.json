@@ -1,0 +1,20 @@
+{
+  "version": "2026-08-demo-planning-v1",
+  "data_status": "Illustrative configurable planning ranges for local testing only; they are not live Sri Lankan market quotations and must be replaced or refreshed before production use.",
+  "crops": {
+    "paddy": {
+      "costs_per_acre_lkr": [
+        {"item": "Land preparation / machinery", "low": 25000, "high": 45000, "note": "Depends on field condition, machinery access and number of operations."},
+        {"item": "Seed / establishment", "low": 8000, "high": 15000, "note": "Depends on variety, seed class and establishment method."},
+        {"item": "Nutrients / soil amendments", "low": 20000, "high": 45000, "note": "Planning allowance only; use current approved recommendations and actual product prices."},
+        {"item": "Weed / pest / disease management", "low": 5000, "high": 20000, "note": "May be lower with prevention/mechanical options; chemical choice and rate require verified label/protocol."},
+        {"item": "Labour", "low": 35000, "high": 75000, "note": "Varies strongly with mechanisation and local labour rates."},
+        {"item": "Irrigation / pumping / field water operations", "low": 5000, "high": 20000, "note": "Varies by irrigation scheme, rainfall and pumping requirement."},
+        {"item": "Harvest / threshing", "low": 20000, "high": 40000, "note": "Depends on combine/manual arrangement and field accessibility."},
+        {"item": "Bags, handling, transport and post-harvest", "low": 8000, "high": 20000, "note": "Depends on buyer, distance, storage and delivery terms."}
+      ],
+      "yield_kg_per_acre": {"low": 1400, "base": 1800, "high": 2300},
+      "selling_price_lkr_per_kg": {"low": 100, "base": 120, "high": 140}
+    }
+  }
+}

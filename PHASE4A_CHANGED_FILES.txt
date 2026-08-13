@@ -1,0 +1,28 @@
+MihiMura Phase 4A changed/added files
+=====================================
+
+Backend added
+-------------
+mihimura-backend/app/evaluation/__init__.py
+mihimura-backend/app/evaluation/benchmark_cases.json
+mihimura-backend/app/services/evaluation.py
+mihimura-backend/tests/phase4a_evaluation_test.py
+
+Backend modified
+----------------
+mihimura-backend/app/api/endpoints.py
+
+Database added
+--------------
+supabase/migrations/20260813_0004_phase4a_evaluation.sql
+
+Frontend modified
+-----------------
+mihimura-web/src/services/platformApi.ts
+mihimura-web/src/pages/AccountProfessionalPages.tsx
+mihimura-web/src/index.css
+
+Documentation added
+-------------------
+PHASE4A_AI_EVALUATION.md
+PHASE4A_CHANGED_FILES.txt

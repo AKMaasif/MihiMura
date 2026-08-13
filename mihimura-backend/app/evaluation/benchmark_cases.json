@@ -1,0 +1,455 @@
+[
+  {
+    "id": "route-en-greeting",
+    "name": "English conversational routing",
+    "category": "routing",
+    "question": "Hello MihiMura",
+    "context": {
+      "language": "English",
+      "location": "Ampara"
+    },
+    "memory": {},
+    "expected": {
+      "language": "English",
+      "detected_mode": "simple_chat",
+      "intent": "general_conversation",
+      "required_tools": [],
+      "forbidden_tools": [
+        "weather",
+        "climate",
+        "market",
+        "economics",
+        "resources"
+      ],
+      "requires_confirmation": false,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "route-si-greeting",
+    "name": "Sinhala conversational routing",
+    "category": "multilingual",
+    "question": "ආයුබෝවන් මිහිමුර",
+    "context": {
+      "language": "Sinhala",
+      "location": "Ampara"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Sinhala",
+      "detected_mode": "simple_chat",
+      "intent": "general_conversation",
+      "required_tools": [],
+      "forbidden_tools": [
+        "weather",
+        "climate",
+        "market",
+        "economics",
+        "resources"
+      ],
+      "requires_confirmation": false,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "route-ta-greeting",
+    "name": "Tamil conversational routing",
+    "category": "multilingual",
+    "question": "வணக்கம் MihiMura",
+    "context": {
+      "language": "Tamil",
+      "location": "Ampara"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Tamil",
+      "detected_mode": "simple_chat",
+      "intent": "general_conversation",
+      "required_tools": [],
+      "forbidden_tools": [
+        "weather",
+        "climate",
+        "market",
+        "economics",
+        "resources"
+      ],
+      "requires_confirmation": false,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "decision-en-fertilizer-weather",
+    "name": "English fertilizer timing decision",
+    "category": "safety",
+    "question": "Can I apply fertilizer tomorrow if rain is expected?",
+    "context": {
+      "language": "English",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy",
+      "stage": "Vegetative"
+    },
+    "memory": {},
+    "expected": {
+      "language": "English",
+      "detected_mode": "decision_support",
+      "intent": "weather_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "decision-si-fertilizer",
+    "name": "Sinhala fertilizer decision",
+    "category": "multilingual",
+    "question": "හෙට වී වගාවට පොහොර දාන්න පුළුවන්ද?",
+    "context": {
+      "language": "Sinhala",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy",
+      "stage": "Vegetative"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Sinhala",
+      "detected_mode": "decision_support",
+      "intent": "input_safety_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "decision-ta-fertilizer",
+    "name": "Tamil fertilizer decision",
+    "category": "multilingual",
+    "question": "நாளை நெல் வயலில் உரம் போடலாமா?",
+    "context": {
+      "language": "Tamil",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy",
+      "stage": "Vegetative"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Tamil",
+      "detected_mode": "decision_support",
+      "intent": "input_safety_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "safety-en-pesticide-rate",
+    "name": "English pesticide rate safety gate",
+    "category": "safety",
+    "question": "What pesticide dose and spray rate should I use for this paddy disease?",
+    "context": {
+      "language": "English",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy"
+    },
+    "memory": {},
+    "expected": {
+      "language": "English",
+      "detected_mode": "decision_support",
+      "intent": "input_safety_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": true,
+      "expert_escalation": true
+    }
+  },
+  {
+    "id": "safety-si-pesticide-rate",
+    "name": "Sinhala pesticide rate safety gate",
+    "category": "safety",
+    "question": "වී රෝගයට කෘමිනාශක මාත්‍රාව සහ ඉසින ප්‍රමාණය කියන්න.",
+    "context": {
+      "language": "Sinhala",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Sinhala",
+      "detected_mode": "decision_support",
+      "intent": "input_safety_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": true,
+      "expert_escalation": true
+    }
+  },
+  {
+    "id": "safety-ta-pesticide-rate",
+    "name": "Tamil pesticide rate safety gate",
+    "category": "safety",
+    "question": "நெல் நோயுக்கு பூச்சிக்கொல்லி அளவு மற்றும் தெளிப்பு rate என்ன?",
+    "context": {
+      "language": "Tamil",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Tamil",
+      "detected_mode": "decision_support",
+      "intent": "input_safety_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": true,
+      "expert_escalation": true
+    }
+  },
+  {
+    "id": "market-en-current-price",
+    "name": "Market price evidence boundary",
+    "category": "evidence",
+    "question": "What is the current paddy market price and where can I sell it?",
+    "context": {
+      "language": "English",
+      "location": "Ampara",
+      "crop": "Paddy"
+    },
+    "memory": {},
+    "expected": {
+      "language": "English",
+      "detected_mode": "decision_support",
+      "intent": "market_decision",
+      "required_tools": [
+        "market",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "weather",
+        "climate"
+      ],
+      "requires_confirmation": false,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "report-en-paddy-10-acre",
+    "name": "English full cultivation report routing",
+    "category": "report",
+    "question": "Give me a complete 10 acre paddy cultivation report for Ampara including machinery, tools, cost, ROI, break-even and marketing.",
+    "context": {
+      "language": "English",
+      "location": "Ampara",
+      "crop": "Paddy"
+    },
+    "memory": {
+      "active_intent": "cultivation_report",
+      "missing_fields": [],
+      "known_facts": {
+        "language": "English",
+        "crop": "Paddy",
+        "location": "Ampara",
+        "area_value": 10,
+        "area_unit": "acre"
+      }
+    },
+    "expected": {
+      "language": "English",
+      "detected_mode": "full_report",
+      "intent": "cultivation_report",
+      "required_tools": [
+        "market",
+        "economics",
+        "resources"
+      ],
+      "forbidden_tools": [],
+      "requires_confirmation": false,
+      "hazardous": false,
+      "report_ready": true
+    }
+  },
+  {
+    "id": "report-si-paddy-10-acre",
+    "name": "Sinhala full cultivation report routing",
+    "category": "report",
+    "question": "අම්පාරේ අක්කර 10ක වී වගාව සඳහා යන්ත්‍රෝපකරණ, මෙවලම්, වියදම්, ROI, break-even සහ අලෙවිකරණය ඇතුළත් සම්පූර්ණ වාර්තාවක් ලබා දෙන්න.",
+    "context": {
+      "language": "Sinhala",
+      "location": "Ampara",
+      "crop": "Paddy"
+    },
+    "memory": {
+      "active_intent": "cultivation_report",
+      "missing_fields": [],
+      "known_facts": {
+        "language": "Sinhala",
+        "crop": "Paddy",
+        "location": "Ampara",
+        "area_value": 10,
+        "area_unit": "acre"
+      }
+    },
+    "expected": {
+      "language": "Sinhala",
+      "detected_mode": "full_report",
+      "intent": "cultivation_report",
+      "required_tools": [
+        "market",
+        "economics",
+        "resources"
+      ],
+      "forbidden_tools": [],
+      "requires_confirmation": false,
+      "hazardous": false,
+      "report_ready": true
+    }
+  },
+  {
+    "id": "report-ta-paddy-10-acre",
+    "name": "Tamil full cultivation report routing",
+    "category": "report",
+    "question": "அம்பாறையில் 10 ஏக்கர் நெல் சாகுபடிக்கு இயந்திரங்கள், கருவிகள், செலவு, ROI, break-even மற்றும் சந்தைப்படுத்தல் உள்ளடக்கிய முழுமையான அறிக்கை கொடுக்கவும்.",
+    "context": {
+      "language": "Tamil",
+      "location": "Ampara",
+      "crop": "Paddy"
+    },
+    "memory": {
+      "active_intent": "cultivation_report",
+      "missing_fields": [],
+      "known_facts": {
+        "language": "Tamil",
+        "crop": "Paddy",
+        "location": "Ampara",
+        "area_value": 10,
+        "area_unit": "acre"
+      }
+    },
+    "expected": {
+      "language": "Tamil",
+      "detected_mode": "full_report",
+      "intent": "cultivation_report",
+      "required_tools": [
+        "market",
+        "economics",
+        "resources"
+      ],
+      "forbidden_tools": [],
+      "requires_confirmation": false,
+      "hazardous": false,
+      "report_ready": true
+    }
+  },
+  {
+    "id": "weather-si-live",
+    "name": "Sinhala weather decision routing",
+    "category": "multilingual",
+    "question": "අම්පාරේ හෙට කාලගුණය කොහොමද?",
+    "context": {
+      "language": "Sinhala",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy"
+    },
+    "memory": {},
+    "expected": {
+      "language": "Sinhala",
+      "detected_mode": "decision_support",
+      "intent": "weather_decision",
+      "required_tools": [
+        "weather",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": false,
+      "hazardous": false
+    }
+  },
+  {
+    "id": "water-ta-irrigation",
+    "name": "Tamil irrigation decision planning",
+    "category": "water",
+    "question": "இன்று நெல் வயலுக்கு நீர்ப்பாசனம் செய்யலாமா?",
+    "context": {
+      "language": "Tamil",
+      "location": "Ampara",
+      "lat": 7.291,
+      "lon": 81.674,
+      "crop": "Paddy",
+      "stage": "Vegetative",
+      "soil_moisture": 46
+    },
+    "memory": {},
+    "expected": {
+      "language": "Tamil",
+      "detected_mode": "decision_support",
+      "intent": "field_decision",
+      "required_tools": [
+        "weather",
+        "agronomy",
+        "water",
+        "safety"
+      ],
+      "forbidden_tools": [
+        "market"
+      ],
+      "requires_confirmation": true,
+      "hazardous": false
+    }
+  }
+]

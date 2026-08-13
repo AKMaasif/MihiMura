@@ -1,0 +1,50 @@
+{
+  "general": [
+    {
+      "authority": "Sri Lanka Department of Agriculture",
+      "title": "Crop information and extension guidance",
+      "url": "https://doa.gov.lk/crops/",
+      "scope": "crop protocols, crop-stage guidance and extension references",
+      "safe_note": "Use the current crop-specific official protocol for consequential rates or chemical choices; MihiMura must not invent a dose."
+    },
+    {
+      "authority": "Sri Lanka Department of Meteorology",
+      "title": "Official weather advisories",
+      "url": "https://meteo.gov.lk/",
+      "scope": "official national and regional weather advisories",
+      "safe_note": "Official warnings take precedence over routine forecast interpretation."
+    },
+    {
+      "authority": "Disaster Management Centre Sri Lanka",
+      "title": "Official disaster warnings",
+      "url": "https://www.dmc.gov.lk/",
+      "scope": "flood, landslide and disaster situation information",
+      "safe_note": "Emergency warnings override routine agricultural scheduling."
+    }
+  ],
+  "paddy": [
+    {
+      "authority": "Rice Research and Development Institute / Department of Agriculture",
+      "title": "Rice fertilizer recommendations",
+      "url": "https://doa.gov.lk/rrdi_fertilizerrecomendation/",
+      "scope": "verified rice fertilizer recommendations",
+      "safe_note": "Check the current RRDI recommendation for the relevant zone, cultivation method and field context before any application; never infer a rate from an LLM response."
+    },
+    {
+      "authority": "Department of Agriculture",
+      "title": "SL Paddy Fertilizer App information",
+      "url": "https://doa.gov.lk/naicc-services-ict-programs-mobile-applications/",
+      "scope": "official paddy fertilizer decision-support reference",
+      "safe_note": "Use as an official reference where applicable and verify the latest version before field use."
+    }
+  ],
+  "chilli": [
+    {
+      "authority": "Sri Lanka Department of Agriculture",
+      "title": "Crop information and recommendations",
+      "url": "https://doa.gov.lk/crops/",
+      "scope": "approved crop production and plant-protection guidance",
+      "safe_note": "A photo can support a differential assessment but should not by itself select a chemical product or application rate."
+    }
+  ]
+}
