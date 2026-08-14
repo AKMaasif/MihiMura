@@ -17,6 +17,9 @@ function GoogleIcon() {
 
 const steps = ['Identity', 'Contact', 'Security', 'Ready'];
 const demoEnabled = import.meta.env.VITE_DEMO_AUTH !== 'false';
+// Guided email/phone login and registration are intentionally disabled for now.
+// Set VITE_GUIDED_AUTH_ENABLED=true later when those flows are ready to reopen.
+const guidedAccessEnabled = import.meta.env.VITE_GUIDED_AUTH_ENABLED === 'true';
 type Mode = 'choice' | 'login' | 'register' | 'recovery';
 
 export default function AuthExperience() {
@@ -37,7 +40,7 @@ export default function AuthExperience() {
   const loc = useLocation();
 
   const requestedMode = new URLSearchParams(loc.search).get('mode');
-  const initialMode: Mode = requestedMode === 'register'
+  const initialMode: Mode = guidedAccessEnabled && requestedMode === 'register'
     ? 'register'
     : requestedMode === 'recovery' || sessionStorage.getItem('mihimura_password_recovery') === '1'
       ? 'recovery'
@@ -65,6 +68,12 @@ export default function AuthExperience() {
   useEffect(() => {
     if (sessionStorage.getItem('mihimura_password_recovery') === '1') setMode('recovery');
   }, [loc.key]);
+
+  useEffect(() => {
+    // Defensive guard: guided access must remain unavailable even if a stale UI state
+    // or a manually edited URL attempts to open login/register directly.
+    if (!guidedAccessEnabled && (mode === 'login' || mode === 'register')) setMode('choice');
+  }, [mode]);
 
   const canNext = useMemo(
     () => step === 0
@@ -154,7 +163,7 @@ export default function AuthExperience() {
 
   return <div className="auth-experience"><div className="auth-scene"><div className="auth-grid-lines"/><div className="auth-sun"/><div className="auth-land land-a"/><div className="auth-land land-b"/><div className="auth-brand"><span><Leaf/></span><div><b>MihiMura</b><small>මිහිමුර</small></div></div><div className="auth-story"><span>Your field companion is ready</span><h1>One identity.<br/>Every field remembered.</h1><p>Sign in to a living farm digital twin that combines weather, crop evidence, tasks and safe AI coordination.</p><div className="auth-agent-pills"><em><Sprout/> Farm memory</em><em><Globe2/> Climate context</em><em><ShieldCheck/> Safety gates</em></div></div><div className="auth-signal"><i/><span>24/7</span><b>Stay Updated</b></div></div>
     <div className="auth-panel"><button className="auth-back-home" onClick={()=>nav('/welcome')}><ArrowLeft/> Back to MihiMura</button>
-      {mode==='choice'&&<div className="auth-choice"><div className="auth-mini-brand"><Leaf/></div><span className="auth-kicker">Secure field access</span><h2>How would you like to continue?</h2><p>Use your Google identity, or enter the guided MihiMura access journey.</p><button className="google-btn" disabled={busy||!supabaseConfigured} onClick={google}><span className="google-g"><GoogleIcon /></span><b>Continue with Google</b><small>{supabaseConfigured?'Secure Supabase sign-in':'Requires Supabase setup'}</small><ArrowRight/></button><div className="auth-divider"><span/>or<span/></div><div className="auth-paths"><button onClick={()=>setMode('login')}><span><Fingerprint/></span><div><b>I already have a field profile</b><small>Continue to my digital twins</small></div><ArrowRight/></button><button onClick={()=>{setMode('register');setStep(0)}}><span><Sprout/></span><div><b>I’m starting with MihiMura</b><small>Create a new farmer identity</small></div><ArrowRight/></button></div>{demoEnabled&&<button className="demo-access" onClick={demo}>Explore with a safe demo farmer</button>}{error&&<p className="auth-error">{error}</p>}</div>}
+      {mode==='choice'&&<div className="auth-choice"><div className="auth-mini-brand"><Leaf/></div><span className="auth-kicker">Secure field access</span><h2>How would you like to continue?</h2><p>Use your Google identity, or enter the guided MihiMura access journey.</p><button className="google-btn" disabled={busy||!supabaseConfigured} onClick={google}><span className="google-g"><GoogleIcon /></span><b>Continue with Google</b><small>{supabaseConfigured?'Secure Supabase sign-in':'Requires Supabase setup'}</small><ArrowRight/></button><div className="auth-divider"><span/>or<span/></div><div className="auth-paths"><button disabled={!guidedAccessEnabled} aria-disabled={!guidedAccessEnabled} title={!guidedAccessEnabled?'This access option is coming soon':undefined} onClick={()=>setMode('login')}><span><Fingerprint/></span><div><b>I already have a field profile</b><small>Continue to my digital twins</small></div><ArrowRight/></button><button disabled={!guidedAccessEnabled} aria-disabled={!guidedAccessEnabled} title={!guidedAccessEnabled?'This access option is coming soon':undefined} onClick={()=>{setMode('register');setStep(0)}}><span><Sprout/></span><div><b>I’m starting with MihiMura</b><small>Create a new farmer identity</small></div><ArrowRight/></button></div>{demoEnabled&&<button className="demo-access" onClick={demo}>Explore with a safe demo farmer</button>}{error&&<p className="auth-error">{error}</p>}</div>}
 
       {mode==='login'&&<div className="auth-journey login-journey"><button className="mini-back" onClick={()=>setMode('choice')}><ArrowLeft/> Access options</button><span className="auth-kicker">Welcome back</span><h2>Open your field memory</h2><p>Your projects, task history and previous recommendations are waiting.</p><div className="auth-method-tabs"><button className={loginMethod==='email'?'active':''} onClick={()=>{setLoginMethod('email');setError('');setInfo('')}}><Mail/> Email key</button><button className={loginMethod==='phone'?'active':''} onClick={()=>{setLoginMethod('phone');setError('');setInfo('')}}><Fingerprint/> Phone OTP</button></div>{loginMethod==='email'?<><div className="journey-field"><span><Mail/></span><input autoFocus placeholder="Email address" value={data.email} onChange={e=>setData({...data,email:e.target.value})}/></div><div className="journey-field"><span><LockKeyhole/></span><input type={show?'text':'password'} placeholder="Password" value={data.password} onChange={e=>setData({...data,password:e.target.value})}/><button onClick={()=>setShow(v=>!v)}>{show?<EyeOff/>:<Eye/>}</button></div><button className="forgot-link" disabled={busy||!data.email} onClick={forgot}>Forgot access key? Send a secure reset link</button><Button disabled={busy||!data.email||!data.password} onClick={emailLogin}>{busy?'Opening field memory…':'Enter MihiMura'} <ArrowRight/></Button></>:<><div className="journey-field"><span><Fingerprint/></span><input autoFocus placeholder="+94 77 123 4567" value={phone} disabled={otpSent} onChange={e=>setPhone(e.target.value)}/></div>{otpSent&&<div className="journey-field otp-field"><span><ShieldCheck/></span><input inputMode="numeric" maxLength={8} placeholder="SMS verification code" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,''))}/><button onClick={()=>{setOtpSent(false);setOtp('')}}>Change</button></div>}<Button disabled={busy||(!otpSent?phone.length<10:otp.length<6)} onClick={phoneLogin}>{busy?'Verifying…':otpSent?'Verify code & continue':'Send one-time code'} <ArrowRight/></Button><small className="otp-note">Requires Phone authentication and an SMS provider to be configured in Supabase Auth.</small></>}<button className="google-small" disabled={!supabaseConfigured} onClick={google}><span className="google-g"><GoogleIcon /></span> Use Google instead</button>{info&&<p className="auth-info">{info}</p>}{error&&<p className="auth-error">{error}</p>}</div>}
 
