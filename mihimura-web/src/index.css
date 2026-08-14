@@ -5724,6 +5724,26 @@ label em {
   width: 15px
 }
 
+/* Guided field-profile access is intentionally visible but unavailable for now. */
+.auth-paths>button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  background: #f8fbf8;
+  color: inherit;
+}
+
+.auth-paths>button:disabled>span {
+  opacity: .72;
+}
+
+.auth-paths>button:disabled>div {
+  opacity: .72;
+}
+
+.auth-paths>button:disabled>svg {
+  opacity: .3;
+}
+
 .demo-access,
 .google-small {
   width: 100%;
