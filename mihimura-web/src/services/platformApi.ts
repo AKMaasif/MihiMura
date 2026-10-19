@@ -207,12 +207,19 @@ export const platformApi = {
   generateConversationReport: (conversationId: string) =>
     request(`/conversations/${conversationId}/reports`, { method: 'POST' }),
 
-  diagnose: async (files: File[], crop_hint: string, symptoms: string, project_id = '') => {
+  diagnose: async (
+    files: File[],
+    crop_hint: string,
+    symptoms: string,
+    project_id = '',
+    language = 'English',
+  ) => {
     const fd = new FormData();
     files.slice(0, 4).forEach((file) => fd.append('images', file));
     fd.append('crop_hint', crop_hint);
     fd.append('symptoms', symptoms);
     fd.append('project_id', project_id);
+    fd.append('language', language);
     return request('/diagnose-image', { method: 'POST', body: fd });
   },
 };

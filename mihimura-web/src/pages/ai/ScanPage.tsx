@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Empty, Notice, Status } from '../../components/common/UI';
 import { platformApi } from '../../services/platformApi';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function ScanPage() {
   const nav = useNavigate();
   const { profile } = useAuth();
+  const { language } = useLanguage();
   const [files, setFiles] = useState<File[]>([]),
     [previews, setPreviews] = useState<string[]>([]),
     [crop, setCrop] = useState('Auto-detect'),
@@ -55,7 +57,7 @@ export function ScanPage() {
     setLoading(true);
     setNotice('');
     try {
-      setResult(await platformApi.diagnose(files, crop, contextText, projectId));
+      setResult(await platformApi.diagnose(files, crop, contextText, projectId, language));
     } catch (e: any) {
       setNotice(e.message);
     } finally {

@@ -31,6 +31,34 @@ export async function fetchDashboard() {
     }));
   }
 }
-export async function askMihimura(question: string, province = 'Eastern') {
-  return platformApi.ask(question, { province, lat: 7.291, lon: 81.674, scope: 'national-overview' });
+/** Main district used as the location when a whole province is selected on the map. */
+export const PROVINCE_MAIN_DISTRICT: Record<string, string> = {
+  Western: 'Colombo',
+  Central: 'Kandy',
+  Southern: 'Galle',
+  Northern: 'Jaffna',
+  Eastern: 'Ampara',
+  'North Western': 'Kurunegala',
+  'North Central': 'Anuradhapura',
+  Uva: 'Badulla',
+  Sabaragamuwa: 'Ratnapura',
+};
+
+/** Ask the agents about a province selected on the national map, keeping one conversation. */
+export async function askMihimura(
+  question: string,
+  province = 'Eastern',
+  conversationId?: string,
+  language = 'English',
+) {
+  return platformApi.ask(
+    question,
+    {
+      district: PROVINCE_MAIN_DISTRICT[province] || 'Ampara',
+      language,
+      language_mode: 'auto',
+      scope: 'national-overview',
+    },
+    conversationId,
+  );
 }

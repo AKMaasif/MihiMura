@@ -2,6 +2,7 @@ import { Bot, MessageCircle, Send, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { askMihimura } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import './ChatWidget.css';
 
 interface Message {
@@ -25,6 +26,8 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string>();
+  const { language } = useLanguage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,7 +49,8 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
     setIsLoading(true);
 
     try {
-      const response = await askMihimura(question, province);
+      const response = await askMihimura(question, province, conversationId, language);
+      if (response?.conversation_id) setConversationId(response.conversation_id);
       const extra = response.recommended_action ? ` ${response.recommended_action}` : '';
       setMessages((current) => [
         ...current,
@@ -62,7 +66,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
         ...current,
         {
           id: `error-${Date.now()}`,
-          text: 'The AI service is currently unavailable. Start the FastAPI backend on port 8000 and try again.',
+          text: `I couldn't reach MihiMura just now (${error instanceof Error ? error.message : 'connection problem'}). Please try again in a moment.`,
           sender: 'agent',
         },
       ]);

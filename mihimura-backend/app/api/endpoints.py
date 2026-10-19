@@ -857,6 +857,7 @@ async def diagnose_image(
     crop_hint: str = Form(""),
     project_id: str = Form(""),
     symptoms: str = Form(""),
+    language: str = Form("English"),
     u=Depends(get_current_user),
 ):
     if not images or len(images) > 4:
@@ -875,6 +876,6 @@ async def diagnose_image(
         names.append(image.filename or "image")
     if total > settings.MAX_UPLOAD_MB * 4 * 1024 * 1024:
         raise HTTPException(400, "Combined upload is too large")
-    result = analyze_crop_images(prepared, crop_hint, symptoms)
+    result = analyze_crop_images(prepared, crop_hint, symptoms, language)
     audit(u["uid"], "crop_image_analysis", project_id or "unassigned", {"filenames": names, "image_count": len(images), "provider": result.get("provider"), "expert_review": result.get("expert_review")})
     return result
