@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 
+from app.agents import i18n
 from app.agents.orchestrator import orchestrator
 from app.agents.vision import analyze_crop_images
 from app.core.auth import get_current_user
@@ -26,7 +27,14 @@ from app.services.conversations import (
     update_memory,
 )
 from app.services.dashboard import get_dashboard_payload
-from app.services.platform import *
+from app.services.platform import (
+    PRODUCTS, SUPPLIERS, audit_log_for_actor, create_community_report, create_expense, create_expert_case,
+    create_farm, create_harvest, create_notification, create_observation, create_order, create_project, create_task,
+    list_agent_runs_for_actor, list_community_reports, list_device_tokens, list_expenses, list_expert_cases_for_actor,
+    list_farms, list_harvests, list_notifications, list_observations, list_orders, list_projects, list_tasks,
+    list_users_for_admin, record_agent_run, request_account_deletion, save_device_token, set_professional_verification,
+    set_user_status, update_expert_case_for_actor, update_farm, update_notification, update_profile, update_task,
+)
 from app.services.reports import generate_conversation_report, list_reports, multilingual_pdf_runtime_status
 from app.services.evaluation import (
     evaluation_runtime_status,
@@ -64,7 +72,7 @@ class AnyPayload(BaseModel):
 
 
 class AIRequest(BaseModel):
-    question: str
+    question: str = Field(default="", max_length=4000)
     context: dict[str, Any] = Field(default_factory=dict)
     conversation_id: str | None = None
     clarification_answers: dict[str, Any] = Field(default_factory=dict)
@@ -243,18 +251,22 @@ def dashboard(u=Depends(get_current_user)):
     return get_dashboard_payload(u["uid"])
 
 
+Latitude = Query(7.291, ge=-90, le=90)
+Longitude = Query(81.674, ge=-180, le=180)
+
+
 @router.get("/weather")
-def weather(lat: float = 7.291, lon: float = 81.674, days: int = 14):
+def weather(lat: float = Latitude, lon: float = Longitude, days: int = Query(14, ge=1, le=16)):
     return get_weather(lat, lon, days)
 
 
 @router.get("/climate-history")
-def climate_history(lat: float = 7.291, lon: float = 81.674, days: int = 30):
+def climate_history(lat: float = Latitude, lon: float = Longitude, days: int = Query(30, ge=1, le=365)):
     return get_nasa_power(lat, lon, days)
 
 
 @router.get("/satellite/catalog")
-def satellite(lat: float = 7.291, lon: float = 81.674):
+def satellite(lat: float = Latitude, lon: float = Longitude):
     return catalog_search(lat, lon)
 
 
@@ -270,7 +282,7 @@ def knowledge_search(payload: AnyPayload, u=Depends(get_current_user)):
         language=str(data.get("language") or "") or None,
         max_authority_tier=int(data.get("max_authority_tier") or 4),
         document_type=str(data.get("document_type") or "") or None,
-        top_k=int(data.get("top_k") or settings.RAG_TOP_K),
+        top_k=max(1, min(int(data.get("top_k") or settings.RAG_TOP_K), 20)),
         strict_language=bool(data.get("strict_language", False)),
     )
 
@@ -554,7 +566,10 @@ def add_community(payload: AnyPayload, u=Depends(get_current_user)):
 
 @router.post("/device-tokens")
 def device_token(payload: AnyPayload, u=Depends(get_current_user)):
-    return save_device_token(u["uid"], payload.data["token"], payload.data.get("platform", "web"))
+    token = str(payload.data.get("token") or "").strip()
+    if not token:
+        raise HTTPException(400, "token is required")
+    return save_device_token(u["uid"], token, str(payload.data.get("platform") or "web"))
 
 
 @router.get("/device-tokens")
@@ -618,6 +633,31 @@ def voice_tts(req: VoiceTTSRequest, u=Depends(get_current_user)):
         return Response(content=audio, media_type=media_type, headers={"Cache-Control": "no-store"})
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc
+
+
+def _attach_generated_report(result: dict[str, Any], uid: str, conversation_id: str, language: str) -> dict[str, Any] | None:
+    """Full Report mode returns the report itself once blocking facts are known.
+
+    Optional unknowns remain visible as assumptions inside the report.
+    """
+    if not (result.get("auto_generate_report") and result.get("report_ready")):
+        return None
+    try:
+        report = generate_conversation_report(uid, conversation_id)
+    except ValueError as exc:
+        # A blocking fact can still be discovered between routing and generation.
+        result.update({"report_ready": False, "auto_generate_report": False, "response_type": "clarification", "summary": str(exc)})
+        return None
+    except Exception as exc:
+        # Keep the chat answer usable even when storage or the provider fails.
+        result["report_generation_error"] = str(exc)
+        result["summary"] = f"{result.get('summary', '').strip()} {i18n.t('report_generated', 'failed', language)}".strip()
+        return None
+    result["report"] = report
+    result["response_type"] = "report_ready"
+    result["summary"] = f"{result.get('summary', '').strip()} {i18n.t('report_generated', 'ready', language)}".strip()
+    result["recommended_action"] = i18n.t("report_generated", "action", language)
+    return report
 
 
 @router.post("/ask-ai")
@@ -697,41 +737,7 @@ def ask_ai(req: AIRequest, u=Depends(get_current_user)):
     # Full Report mode means the user asked for the report itself, not merely a
     # "report ready" status. Generate it immediately once the genuinely blocking
     # facts are available. Optional unknowns remain visible as assumptions.
-    generated_report = None
-    if result.get("auto_generate_report") and result.get("report_ready"):
-        try:
-            generated_report = generate_conversation_report(u["uid"], conversation_id)
-            result["report"] = generated_report
-            result["response_type"] = "report_ready"
-            lang = str(resolved_context.get("language") or "English")
-            if lang == "Sinhala":
-                suffix = "සම්පූර්ණ වාර්තාව දැන් සකස් කර පුද්ගලිකව ගබඩා කර ඇත. සම්පූර්ණ වගා, උපකරණ/මෙවලම්, ආදාන, වියදම්/ලාභ, අස්වැන්න සහ අලෙවි සැලැස්ම සඳහා PDF එක විවෘත කරන්න."
-                action_text = "සකස් කළ වාර්තාව විවෘත කර, සැබෑ දේශීය මිල ගණන් හෝ ක්ෂේත්‍ර දත්ත ලැබුණු විට ඇස්තමේන්තු යාවත්කාලීන කරන්න."
-            elif lang == "Tamil":
-                suffix = "முழுமையான அறிக்கை இப்போது உருவாக்கப்பட்டு தனிப்பட்ட முறையில் சேமிக்கப்பட்டுள்ளது. முழு சாகுபடி, உபகரணங்கள்/கருவிகள், உள்ளீடுகள், செலவு/லாபம், அறுவடை மற்றும் சந்தைப்படுத்தல் திட்டத்திற்காக PDF-ஐ திறக்கவும்."
-                action_text = "உருவாக்கப்பட்ட அறிக்கையை திறந்து, உண்மையான உள்ளூர் விலைப்புள்ளிகள் அல்லது வயல் தரவு கிடைக்கும் போது மதிப்பீடுகளை புதுப்பிக்கவும்."
-            else:
-                suffix = "The complete report has now been generated and stored privately. Open the PDF for the full agronomy, equipment/tools, input, cost/profit, harvest and marketing plan."
-                action_text = "Open the generated report, then refine any estimate with actual local quotations or field evidence."
-            result["summary"] = f"{result.get('summary','').strip()} {suffix}".strip()
-            result["recommended_action"] = action_text
-        except ValueError as exc:
-            # The report planner can still return clarification if a blocking fact was
-            # discovered between routing and generation.
-            result["report_ready"] = False
-            result["auto_generate_report"] = False
-            result["response_type"] = "clarification"
-            result["summary"] = str(exc)
-        except Exception as exc:
-            # Keep the chat response usable even when Storage/provider generation fails.
-            result["report_generation_error"] = str(exc)
-            lang = str(resolved_context.get("language") or "English")
-            fail_text = (
-                "වාර්තා අන්තර්ගතය සූදානම් නමුත් මෙම ඉල්ලීමේදී PDF එක සම්පූර්ණ කිරීමට නොහැකි විය." if lang == "Sinhala" else
-                "அறிக்கை உள்ளடக்கம் தயாராக உள்ளது; ஆனால் இந்த கோரிக்கையில் PDF உருவாக்கத்தை முடிக்க முடியவில்லை." if lang == "Tamil" else
-                "The report content is ready, but PDF generation could not complete in this request."
-            )
-            result["summary"] = f"{result.get('summary','').strip()} {fail_text}".strip()
+    generated_report = _attach_generated_report(result, u["uid"], conversation_id, str(resolved_context.get("language") or "English"))
 
     result["response_language"] = resolved_context.get("language") or "English"
     result["detected_language"] = resolved_context.get("detected_language") or result["response_language"]

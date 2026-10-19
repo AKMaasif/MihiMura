@@ -1,0 +1,476 @@
+/* ===== Functional topbar: search, language, notifications ===== */
+.top-search-wrap,
+.top-menu-wrap {
+  position: relative
+}
+
+.top-search-wrap {
+  width: 235px
+}
+
+.top-search.active,
+.top-language.active,
+.bell.active {
+  border-color: #8db69a !important;
+  box-shadow: 0 0 0 3px rgba(47, 122, 69, .09)
+}
+
+.top-search {
+  width: 100%
+}
+
+.top-search input {
+  width: 100%;
+  min-width: 0
+}
+
+.search-clear {
+  width: 20px !important;
+  height: 20px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #8b968f !important
+}
+
+.search-clear svg {
+  width: 12px !important
+}
+
+.top-language {
+  min-width: 74px;
+  justify-content: center;
+  cursor: pointer
+}
+
+.top-language .rotated {
+  transform: rotate(180deg)
+}
+
+.top-language svg {
+  transition: transform .18s ease
+}
+
+.top-popover {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 700;
+  border: 1px solid #dce5de;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 20px 55px rgba(23, 67, 44, .15);
+  backdrop-filter: blur(18px);
+  overflow: hidden
+}
+
+.search-popover {
+  left: 0;
+  right: auto;
+  width: min(390px, calc(100vw - 32px));
+  padding: 7px
+}
+
+.search-result {
+  width: 100%;
+  min-height: 54px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 18px !important;
+  align-items: center !important;
+  gap: 9px !important;
+  padding: 8px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  text-align: left !important;
+  cursor: pointer
+}
+
+.search-result:hover {
+  background: #f1f7f2 !important
+}
+
+.search-result>svg {
+  width: 14px !important;
+  color: #93a098
+}
+
+.search-kind {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e9f4ec;
+  color: #2f7548
+}
+
+.search-kind.project {
+  background: #fff3e3;
+  color: #c66e21
+}
+
+.search-kind.task {
+  background: #eef3fb;
+  color: #417eb1
+}
+
+.search-kind.farm {
+  background: #edf6ee;
+  color: #398054
+}
+
+.search-kind svg {
+  width: 16px
+}
+
+.search-result div {
+  min-width: 0
+}
+
+.search-result b,
+.search-result small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.search-result b {
+  font-size: 9px;
+  color: #22362a
+}
+
+.search-result small {
+  margin-top: 3px;
+  font-size: 7px;
+  color: #87938b
+}
+
+.popover-empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #829087;
+  text-align: center;
+  font-size: 8px
+}
+
+.popover-empty svg {
+  width: 22px;
+  height: 22px
+}
+
+.language-popover {
+  width: 245px;
+  padding: 7px
+}
+
+.popover-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  color: #65756a;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em
+}
+
+.popover-title svg {
+  width: 14px
+}
+
+.language-popover>button {
+  width: 100%;
+  min-height: 50px !important;
+  display: grid !important;
+  grid-template-columns: 34px 1fr 17px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 7px 8px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  text-align: left !important;
+  cursor: pointer
+}
+
+.language-popover>button:hover,
+.language-popover>button.selected {
+  background: #eef6ef !important
+}
+
+.language-symbol {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #dce7de;
+  border-radius: 9px;
+  background: #fff;
+  color: #245d39;
+  font-size: 9px;
+  font-weight: 900
+}
+
+.language-popover b,
+.language-popover small {
+  display: block
+}
+
+.language-popover b {
+  font-size: 9px;
+  color: #21342a
+}
+
+.language-popover small {
+  margin-top: 2px;
+  font-size: 7px;
+  color: #8c9790
+}
+
+.language-popover>button>svg {
+  width: 14px !important;
+  color: #2e7c49
+}
+
+.bell {
+  cursor: pointer
+}
+
+.notification-count {
+  position: absolute !important;
+  right: -4px !important;
+  top: -5px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  padding: 0 4px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 2px solid #fff !important;
+  border-radius: 999px !important;
+  background: #d9554f !important;
+  color: #fff !important;
+  font-size: 7px !important;
+  font-style: normal !important;
+  font-weight: 900 !important
+}
+
+.notification-popover {
+  width: min(370px, calc(100vw - 24px))
+}
+
+.notification-head {
+  min-height: 61px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e6ece7
+}
+
+.notification-head b,
+.notification-head small {
+  display: block
+}
+
+.notification-head b {
+  font-size: 11px;
+  color: #203328
+}
+
+.notification-head small {
+  margin-top: 2px;
+  font-size: 7px;
+  color: #8b968f
+}
+
+.notification-head>button {
+  height: auto !important;
+  padding: 5px 7px !important;
+  border: 0 !important;
+  background: #edf6ef !important;
+  color: #2c7447 !important;
+  font-size: 7px !important;
+  font-weight: 800 !important;
+  cursor: pointer
+}
+
+.notification-list {
+  max-height: 360px;
+  overflow-y: auto
+}
+
+.notification-item {
+  width: 100%;
+  min-height: 76px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 7px !important;
+  align-items: start !important;
+  gap: 9px !important;
+  padding: 11px 13px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #edf1ee !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  text-align: left !important;
+  cursor: pointer
+}
+
+.notification-item:hover {
+  background: #f7faf7 !important
+}
+
+.notification-item.unread {
+  background: #f4f9f5 !important
+}
+
+.notification-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e7f3e9;
+  color: #2d7447
+}
+
+.notification-icon svg {
+  width: 15px
+}
+
+.notification-item b {
+  display: block;
+  color: #26392e;
+  font-size: 9px
+}
+
+.notification-item p {
+  margin: 3px 0 5px;
+  color: #6f7d73;
+  font-size: 7.5px;
+  line-height: 1.45
+}
+
+.notification-item small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #98a29b;
+  font-size: 6.5px
+}
+
+.notification-item small svg {
+  width: 10px
+}
+
+.notification-item>i {
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: #d9554f
+}
+
+.notification-item.read>i {
+  background: transparent
+}
+
+.notification-footer {
+  width: 100%;
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  border: 0 !important;
+  border-top: 1px solid #e5ebe6 !important;
+  border-radius: 0 !important;
+  background: #fbfdfb !important;
+  color: #2e7448 !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  cursor: pointer
+}
+
+.notification-footer svg {
+  width: 13px !important
+}
+
+.popover-loading {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #849188;
+  font-size: 8px
+}
+
+.popover-loading i {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #dce7df;
+  border-top-color: #377d50;
+  border-radius: 50%;
+  animation: topbarSpin .75s linear infinite
+}
+
+@keyframes topbarSpin {
+  to {
+    transform: rotate(360deg)
+  }
+}
+
+@media(max-width:1100px) {
+  .top-search-wrap {
+    width: 190px
+  }
+}
+
+@media(max-width:980px) {
+  .top-search-wrap {
+    display: none
+  }
+}
+
+@media(max-width:700px) {
+  .top-language {
+    display: flex !important;
+    min-width: 52px !important;
+    padding: 0 7px !important
+  }
+
+  .top-language>span {
+    font-size: 7px
+  }
+
+  .top-language svg:last-child {
+    display: none
+  }
+
+  .notification-popover,
+  .language-popover {
+    position: fixed;
+    top: 74px;
+    right: 10px;
+    left: auto
+  }
+
+  .notification-popover {
+    width: min(370px, calc(100vw - 20px))
+  }
+
+  .language-popover {
+    width: min(245px, calc(100vw - 20px))
+  }
+}
+

@@ -41,7 +41,12 @@ export const getRiskColor = (risk: RiskLevel) => {
   return '#d9554f';
 };
 
-export function SriLankaProvinceMap({ selectedProvince, activeLayer, provinces, onSelectProvince }: SriLankaProvinceMapProps) {
+export function SriLankaProvinceMap({
+  selectedProvince,
+  activeLayer,
+  provinces,
+  onSelectProvince,
+}: SriLankaProvinceMapProps) {
   const [zoom, setZoom] = useState(1);
   const [hoveredProvince, setHoveredProvince] = useState<string | null>(null);
 
@@ -60,10 +65,18 @@ export function SriLankaProvinceMap({ selectedProvince, activeLayer, provinces, 
   return (
     <div className="province-map-shell">
       <div className="map-zoom-controls" aria-label="Map zoom controls">
-        <button type="button" onClick={() => setZoom((value) => Math.min(1.45, value + 0.1))} aria-label="Zoom in">
+        <button
+          type="button"
+          onClick={() => setZoom((value) => Math.min(1.45, value + 0.1))}
+          aria-label="Zoom in"
+        >
           <Plus size={17} />
         </button>
-        <button type="button" onClick={() => setZoom((value) => Math.max(0.88, value - 0.1))} aria-label="Zoom out">
+        <button
+          type="button"
+          onClick={() => setZoom((value) => Math.max(0.88, value - 0.1))}
+          aria-label="Zoom out"
+        >
           <Minus size={17} />
         </button>
         <button type="button" onClick={() => setZoom(1)} aria-label="Reset map zoom">
@@ -76,13 +89,21 @@ export function SriLankaProvinceMap({ selectedProvince, activeLayer, provinces, 
         <strong>{visibleValue}/100</strong>
       </div>
 
-      <svg className="province-map" viewBox="0 0 450 793" role="img" aria-label="Sri Lanka provincial agricultural risk map">
+      <svg
+        className="province-map"
+        viewBox="0 0 450 793"
+        role="img"
+        aria-label="Sri Lanka provincial agricultural risk map"
+      >
         <defs>
           <filter id="selectedProvinceGlow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#143f28" floodOpacity="0.26" />
           </filter>
         </defs>
-        <g className="province-map__geometry" style={{ transform: `scale(${zoom})`, transformOrigin: '225px 396.5px' }}>
+        <g
+          className="province-map__geometry"
+          style={{ transform: `scale(${zoom})`, transformOrigin: '225px 396.5px' }}
+        >
           {sriLankaDistricts.map((district) => {
             const isSelected = district.province === selectedProvince;
             const isHovered = district.province === hoveredProvince;
@@ -115,7 +136,9 @@ export function SriLankaProvinceMap({ selectedProvince, activeLayer, provinces, 
                 }}
               >
                 <rect x={label.x - 42} y={label.y - 13} width="84" height="26" rx="13" />
-                <text x={label.x} y={label.y + 4} textAnchor="middle">{label.short}</text>
+                <text x={label.x} y={label.y + 4} textAnchor="middle">
+                  {label.short}
+                </text>
               </g>
             );
           })}

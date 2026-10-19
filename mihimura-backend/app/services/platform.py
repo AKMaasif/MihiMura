@@ -35,6 +35,12 @@ def _owned(table: str, uid: str) -> list[dict[str, Any]]:
     return _sort(_many(table, owner_uid=uid))
 
 
+def _required(p: dict[str, Any], *keys: str) -> None:
+    missing = [k for k in keys if p.get(k) in (None, "", [])]
+    if missing:
+        raise ValueError(f"Missing required field(s): {', '.join(missing)}")
+
+
 def _require_farm(uid: str, farm_id: str) -> dict[str, Any]:
     farm = _one("farms", id=farm_id, owner_uid=uid)
     if not farm or farm.get("status") == "archived":
@@ -84,6 +90,9 @@ def update_profile(uid: str, p: dict[str, Any]):
         if f in {"location_consent", "onboarding_complete"}:
             value = bool(value)
         patch[f] = value
+    if "role" in patch and patch["role"] != (get_user(uid) or {}).get("role"):
+        # A new role must be re-verified by an administrator.
+        patch["professional_verified"] = False
     if patch:
         _table("profiles").update(patch).eq("id", uid).execute()
         audit(uid, "update_profile", uid, {k: p[k] for k in p if k in fields})
@@ -95,6 +104,7 @@ def list_farms(uid: str):
 
 
 def create_farm(uid: str, p: dict[str, Any]):
+    _required(p, "name")
     fid = f"farm_{uuid4().hex[:8]}"
     payload = {
         "id": fid,
@@ -174,6 +184,7 @@ def get_project_context(uid: str, project_id: str) -> dict[str, Any] | None:
 
 
 def create_project(uid: str, p: dict[str, Any]):
+    _required(p, "farm_id", "crop")
     _require_farm(uid, p["farm_id"])
     pid = f"proj_{uuid4().hex[:8]}"
     payload = {
@@ -215,6 +226,7 @@ def list_tasks(uid: str):
 
 
 def create_task(uid: str, p: dict[str, Any]):
+    _required(p, "project_id", "title", "due_at")
     _require_project(uid, p["project_id"])
     tid = f"task_{uuid4().hex[:8]}"
     payload = {
@@ -254,6 +266,7 @@ def list_observations(uid: str):
 
 
 def create_observation(uid: str, p: dict[str, Any]):
+    _required(p, "project_id", "note")
     _require_project(uid, p["project_id"])
     oid = f"obs_{uuid4().hex[:8]}"
     payload = {
@@ -280,6 +293,7 @@ def list_expenses(uid: str):
 
 
 def create_expense(uid: str, p: dict[str, Any]):
+    _required(p, "project_id", "amount")
     _require_project(uid, p["project_id"])
     eid = f"exp_{uuid4().hex[:8]}"
     payload = {"id": eid, "project_id": p["project_id"], "owner_uid": uid, "created_at": now_iso(), "category": p.get("category", "Other"), "amount": float(p["amount"]), "note": p.get("note", "")}
@@ -293,6 +307,7 @@ def list_harvests(uid: str):
 
 
 def create_harvest(uid: str, p: dict[str, Any]):
+    _required(p, "project_id")
     _require_project(uid, p["project_id"])
     hid = f"harv_{uuid4().hex[:8]}"
     payload = {
@@ -316,11 +331,42 @@ def list_orders(uid: str):
     return _owned("orders", uid)
 
 
+MAX_ORDER_QUANTITY = 1000
+
+
+def _priced_items(raw_items: Any) -> list[dict[str, Any]]:
+    """Rebuild order lines from the catalog so the client cannot set prices."""
+    catalog = {item["id"]: item for item in PRODUCTS}
+    items: list[dict[str, Any]] = []
+    for raw in raw_items or []:
+        product = catalog.get(str((raw or {}).get("id") or ""))
+        if not product:
+            raise ValueError("Order contains an unknown product")
+        try:
+            quantity = int((raw or {}).get("quantity", 1))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Order quantity must be a whole number") from exc
+        if not 1 <= quantity <= MAX_ORDER_QUANTITY:
+            raise ValueError(f"Order quantity must be between 1 and {MAX_ORDER_QUANTITY}")
+        items.append({
+            "id": product["id"],
+            "name": product["name"],
+            "supplier": product["supplier"],
+            "pack": product["pack"],
+            "price": product["price"],
+            "quantity": quantity,
+        })
+    if not items:
+        raise ValueError("Order must contain at least one item")
+    return items
+
+
 def create_order(uid: str, p: dict[str, Any]):
+    _required(p, "project_id")
     _require_project(uid, p["project_id"])
     oid = f"ord_{uuid4().hex[:8]}"
-    items = p.get("items", [])
-    total = sum(float(i.get("price", 0)) * int(i.get("quantity", 1)) for i in items)
+    items = _priced_items(p.get("items"))
+    total = sum(float(i["price"]) * i["quantity"] for i in items)
     payload = {
         "id": oid,
         "owner_uid": uid,
@@ -344,6 +390,7 @@ def list_expert_cases(uid: str):
 
 
 def create_expert_case(uid: str, p: dict[str, Any]):
+    _required(p, "project_id", "reason")
     _require_project(uid, p["project_id"])
     cid = f"case_{uuid4().hex[:8]}"
     payload = {
@@ -368,9 +415,17 @@ def _privileged(actor: dict[str, Any], roles: set[str]) -> bool:
     return actor.get("provider") == "demo" or (actor.get("role") in roles and bool(actor.get("professional_verified")))
 
 
+OWNER_CASE_STATUSES = {"open", "closed", "cancelled"}
+
+
 def update_expert_case_for_actor(actor: dict[str, Any], case_id: str, p: dict[str, Any]):
-    allowed = {k: v for k, v in p.items() if k in {"status", "expert_decision", "availability"}}
     privileged = _privileged(actor, {"agronomist", "expert", "admin"})
+    if privileged:
+        allowed = {k: v for k, v in p.items() if k in {"status", "expert_decision", "availability"}}
+    else:
+        allowed = {k: v for k, v in p.items() if k == "availability"}
+        if p.get("status") in OWNER_CASE_STATUSES:
+            allowed["status"] = p["status"]
     target = _one("expert_cases", id=case_id) if privileged else _one("expert_cases", id=case_id, owner_uid=actor["uid"])
     if not target:
         return None
@@ -385,6 +440,7 @@ def list_notifications(uid: str):
 
 
 def create_notification(uid: str, p: dict[str, Any]):
+    _required(p, "title", "body")
     nid = f"note_{uuid4().hex[:8]}"
     payload = {
         "id": nid,

@@ -9,7 +9,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.agents.orchestrator import _decision_demo, _decision_tool_plan, _full_report_response, _simple_demo
+from app.agents.specialists import Evidence
+from app.agents.workflows.chat import fallback_answer as _simple_demo
+from app.agents.workflows.decision import fallback_decision, select_tools as _decision_tool_plan
+from app.agents.workflows.report import full_report_response as _full_report_response
 from app.agents.router import route_request
 from app.agents.safety import precheck
 from app.services.conversations import extract_facts, report_missing_fields
@@ -83,37 +86,27 @@ def run() -> None:
     empty = {"documents": []}
     water = {}
     safety = precheck(si_q, {"language": "Sinhala"})
-    si_answer = _decision_demo(
+    si_answer = fallback_decision(
         si_q,
         {"language": "Sinhala", "location": "Galle", "context_scope": "conversation-scenario"},
-        sample_weather,
-        {},
-        empty,
-        water,
+        Evidence(weather=sample_weather, knowledge=empty, water=water, market={"channels": []}),
         safety,
         [],
-        {},
         route=si_route,
         tool_plan=_decision_tool_plan(si_route, si_q),
-        market={"channels": []},
     )
     assert detect_language(si_answer["summary"]).language == "Sinhala", si_answer["summary"]
     assert "29.2" in si_answer["summary"]
 
     ta_safety = precheck(ta_q, {"language": "Tamil"})
-    ta_answer = _decision_demo(
+    ta_answer = fallback_decision(
         ta_q,
         {"language": "Tamil", "location": "Galle", "context_scope": "conversation-scenario"},
-        sample_weather,
-        {},
-        empty,
-        water,
+        Evidence(weather=sample_weather, knowledge=empty, water=water, market={"channels": []}),
         ta_safety,
         [],
-        {},
         route=ta_route,
         tool_plan=_decision_tool_plan(ta_route, ta_q),
-        market={"channels": []},
     )
     assert detect_language(ta_answer["summary"]).language == "Tamil", ta_answer["summary"]
     assert "29.2" in ta_answer["summary"]

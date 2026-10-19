@@ -73,11 +73,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
 
   return (
     <>
-      <button
-        type="button"
-        className={`chat-fab${isOpen ? ' hidden' : ''}`}
-        onClick={() => setIsOpen(true)}
-      >
+      <button type="button" className={`chat-fab${isOpen ? ' hidden' : ''}`} onClick={() => setIsOpen(true)}>
         <MessageCircle size={18} />
         Ask Mihimura AI
       </button>
@@ -85,13 +81,20 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
       <section className={`chat-window${isOpen ? ' open' : ''}`} aria-label="Mihimura AI assistant">
         <header className="chat-header">
           <div className="chat-header-title">
-            <span className="chat-avatar"><Bot size={21} /></span>
+            <span className="chat-avatar">
+              <Bot size={21} />
+            </span>
             <div>
               <h3>Mihimura AI</h3>
               <p>{province} Province context</p>
             </div>
           </div>
-          <button type="button" className="chat-close-btn" onClick={() => setIsOpen(false)} aria-label="Close AI chat">
+          <button
+            type="button"
+            className="chat-close-btn"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close AI chat"
+          >
             <X size={20} />
           </button>
         </header>
@@ -116,7 +119,9 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
 
         <div className="chat-quick-prompts">
           {['Can I fertilize tomorrow?', 'Show the main risk', 'What should I inspect?'].map((prompt) => (
-            <button key={prompt} type="button" onClick={() => setInputValue(prompt)}>{prompt}</button>
+            <button key={prompt} type="button" onClick={() => setInputValue(prompt)}>
+              {prompt}
+            </button>
           ))}
         </div>
 
@@ -125,13 +130,20 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
             type="text"
             placeholder="Ask about crops, weather or actions..."
             value={inputValue}
+            maxLength={4000}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setInputValue(event.target.value)}
             onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
               if (event.key === 'Enter') void handleSend();
             }}
             disabled={isLoading}
           />
-          <button type="button" className="chat-send-btn" onClick={() => void handleSend()} disabled={isLoading || !inputValue.trim()} aria-label="Send message">
+          <button
+            type="button"
+            className="chat-send-btn"
+            onClick={() => void handleSend()}
+            disabled={isLoading || !inputValue.trim()}
+            aria-label="Send message"
+          >
             <Send size={17} />
           </button>
         </div>

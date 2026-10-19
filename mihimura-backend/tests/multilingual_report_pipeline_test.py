@@ -22,8 +22,9 @@ from app.services.reports import (
 class FakeModels:
     def generate_content(self, *, model, contents, config):
         schema = config.get("response_schema")
+        target = "Tamil" if "into Tamil" in config["system_instruction"] else "Sinhala"
+        data = json.loads(contents.split("\n", 1)[1])
         if schema is ReportMetaTranslationPayload:
-            target = "Tamil" if "into Tamil" in contents else "Sinhala"
             native = "தமிழ் அறிக்கை" if target == "Tamil" else "සිංහල වාර්තාව"
             parsed = schema(
                 title=native,
@@ -35,8 +36,7 @@ class FakeModels:
             return SimpleNamespace(parsed=parsed, text=parsed.model_dump_json())
 
         if schema is ReportSectionBatchPayload:
-            source = json.loads(contents.split("SOURCE_SECTIONS: ", 1)[1])
-            target = "Tamil" if "into Tamil" in contents else "Sinhala"
+            source = data["source_sections"]
             if target == "Tamil":
                 heading = "தமிழ் சாகுபடி திட்டம்"
                 paragraph = "நெல் சாகுபடி நடவடிக்கைகளை திட்டமிட்டு செயல்படுத்தவும்."

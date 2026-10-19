@@ -1,10 +1,408 @@
 import { useState } from 'react';
-import { Accessibility, ArrowLeft, ArrowRight, BellRing, Check, Droplets, Globe2, Languages, LocateFixed, MapPin, Sprout, UserRound, Waves } from 'lucide-react';
+import {
+  Accessibility,
+  ArrowLeft,
+  ArrowRight,
+  BellRing,
+  Check,
+  Droplets,
+  Globe2,
+  Languages,
+  LocateFixed,
+  MapPin,
+  Sprout,
+  UserRound,
+  Waves,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/UI';
 import { districts } from '../../data/platformData';
 
-const stepMeta=[['Location',MapPin],['Crops',Sprout],['Farm style',Waves],['Guidance',Languages],['Accessibility',Accessibility],['Consent',Check]] as const;
-export default function OnboardingJourney(){const nav=useNavigate();const {completeOnboarding,user}=useAuth();const pending=(()=>{try{return JSON.parse(sessionStorage.getItem('mihimura_pending_identity')||'{}')}catch{return {}}})();const [step,setStep]=useState(0);const [busy,setBusy]=useState(false);const [d,setD]=useState<any>({name:pending.name||user?.displayName||'',role:pending.role||user?.requestedRole||'farmer',language:'English',district:'Ampara',ds_division:'',gn_division:'',crops:['Paddy','Chilli'],farm_type:'owner',irrigation:'Irrigation canal',experience:'Experienced',guidance_mode:'Voice + visual cards',notification_channels:'Push + SMS fallback',accessibility:{largeText:false,highContrast:false,audioNumbers:true},location_consent:false,lat:7.291,lon:81.674});const set=(k:string,v:any)=>setD((x:any)=>({...x,[k]:v}));const locate=()=>navigator.geolocation?.getCurrentPosition(p=>setD((x:any)=>({...x,lat:p.coords.latitude,lon:p.coords.longitude,location_consent:true})),()=>alert('Location unavailable. You can continue with the manual district.'));
- const finish=async()=>{setBusy(true);await completeOnboarding({...d,primary_crops_json:d.crops,accessibility_json:d.accessibility});sessionStorage.removeItem('mihimura_pending_identity');setBusy(false);nav('/app/dashboard',{replace:true})};return <div className="onboarding-shell"><aside className="onboarding-side"><div className="onboard-brand"><Sprout/><b>MihiMura</b></div><span>First-time setup</span><h1>Build the context behind better decisions.</h1><p>Optional details can be changed later. Location, sharing and purchasing consent are requested only when needed.</p><div className="onboarding-steps">{stepMeta.map(([label,Icon],i)=><div className={`${i===step?'active':''} ${i<step?'done':''}`} key={label}><i>{i<step?<Check/>:<Icon/>}</i><span><small>0{i+1}</small><b>{label}</b></span></div>)}</div></aside><main className="onboarding-main"><div className="onboard-top"><span>Step {step+1} of {stepMeta.length}</span><button onClick={()=>nav('/welcome')}>Exit setup</button></div><div className="onboard-card">{step===0&&<><span className="onboard-kicker"><MapPin/> Your local context</span><h2>Where should MihiMura look first?</h2><p>GPS improves local forecasts, while manual administrative areas remain available as a privacy-friendly fallback.</p><button className="location-action" onClick={locate}><LocateFixed/><div><b>Use my current location</b><small>{d.location_consent?`${d.lat.toFixed(4)}, ${d.lon.toFixed(4)} captured`:'Browser will ask for permission only now'}</small></div><ArrowRight/></button><div className="field-grid"><label>District<select value={d.district} onChange={e=>set('district',e.target.value)}>{districts.map(x=><option key={x}>{x}</option>)}</select></label><label>Divisional Secretariat<input value={d.ds_division} onChange={e=>set('ds_division',e.target.value)} placeholder="Secretariat name here "/></label><label>Grama Niladhari division <em>optional</em><input value={d.gn_division} onChange={e=>set('gn_division',e.target.value)} placeholder="Optional"/></label></div></>}{step===1&&<><span className="onboard-kicker"><Sprout/> Crop focus</span><h2>What do you grow?</h2><p>Select the crops that should appear first in projects, advisories and image guidance.</p><div className="crop-picker">{['Paddy','Chilli','Coconut','Tea','Maize','Onion','Tomato','Brinjal','Banana','Cinnamon'].map(c=><button key={c} className={d.crops.includes(c)?'active':''} onClick={()=>set('crops',d.crops.includes(c)?d.crops.filter((x:string)=>x!==c):[...d.crops,c])}>{c}{d.crops.includes(c)&&<Check/>}</button>)}</div></>}{step===2&&<><span className="onboard-kicker"><Droplets/> Farm operating context</span><h2>How is your farm managed?</h2><div className="choice-grid">{[['owner','I own / manage the farm','Personal decisions and field history'],['manager','I manage multiple plots','Assignments, teams and analytics'],['helper','I support another farmer','Shared access and assisted use']].map(x=><button className={d.farm_type===x[0]?'active':''} onClick={()=>set('farm_type',x[0])} key={x[0]}><b>{x[1]}</b><small>{x[2]}</small></button>)}</div><div className="field-grid"><label>Irrigation availability<select value={d.irrigation} onChange={e=>set('irrigation',e.target.value)}><option>Irrigation canal</option><option>Rain-fed</option><option>Tube well</option><option>Drip irrigation</option><option>Mixed</option></select></label><label>Experience<select value={d.experience} onChange={e=>set('experience',e.target.value)}><option>New farmer</option><option>Intermediate</option><option>Experienced</option><option>Professional manager</option></select></label></div></>}{step===3&&<><span className="onboard-kicker"><Languages/> Language & guidance</span><h2>How should guidance reach you?</h2><div className="language-cards">{[['English','EN','English'],['Sinhala','සි','සිංහල'],['Tamil','த','தமிழ்']].map(x=><button className={d.language===x[0]?'active':''} onClick={()=>set('language',x[0])} key={x[0]}><i>{x[1]}</i><b>{x[2]}</b></button>)}</div><div className="field-grid"><label>Guidance style<select value={d.guidance_mode} onChange={e=>set('guidance_mode',e.target.value)}><option>Voice + visual cards</option><option>Text first</option><option>Illustrated steps</option><option>Large text + voice</option></select></label><label>Notifications<select value={d.notification_channels} onChange={e=>set('notification_channels',e.target.value)}><option>Push + SMS fallback</option><option>Push only</option><option>SMS only</option><option>Quiet mode</option></select></label></div></>}{step===4&&<><span className="onboard-kicker"><Accessibility/> Accessible by design</span><h2>Choose any assistance you want.</h2><div className="switch-list"><label><span><b>Large interface text</b><small>Increase important labels and touch targets.</small></span><input type="checkbox" checked={d.accessibility.largeText} onChange={e=>set('accessibility',{...d.accessibility,largeText:e.target.checked})}/></label><label><span><b>Higher contrast</b><small>Increase separation between status and background.</small></span><input type="checkbox" checked={d.accessibility.highContrast} onChange={e=>set('accessibility',{...d.accessibility,highContrast:e.target.checked})}/></label><label><span><b>Read critical numbers aloud</b><small>Repeat quantities, dates and warnings in voice mode.</small></span><input type="checkbox" checked={d.accessibility.audioNumbers} onChange={e=>set('accessibility',{...d.accessibility,audioNumbers:e.target.checked})}/></label></div></>}{step===5&&<><span className="onboard-kicker"><Check/> Privacy & control</span><h2>You stay in control of consequential actions.</h2><div className="consent-summary"><div><Globe2/><span><b>Location</b><p>Used for weather and regional context only when enabled.</p></span></div><div><BellRing/><span><b>Notifications</b><p>Quiet hours and channels can be changed at any time.</p></span></div><div><UserRound/><span><b>Farm data ownership</b><p>You control sharing, export and deletion. Orders and expert referrals require explicit confirmation.</p></span></div></div><label className="consent-check"><input type="checkbox" checked={d.location_consent} onChange={e=>set('location_consent',e.target.checked)}/>Allow location-aware guidance for this profile. Manual district fallback remains available.</label>{['agronomist','supplier','analyst'].includes(d.role)&&<div className="professional-pending-note"><Check/><span><b>Professional workspace verification</b><p>Your account can use farmer-facing tools immediately. Access to expert, supplier or regional analytics data is unlocked only after an administrator verifies the professional role.</p></span></div>}</>}<div className="onboard-actions"><Button variant="ghost" disabled={step===0} onClick={()=>setStep(s=>Math.max(0,s-1))}><ArrowLeft/> Back</Button>{step<stepMeta.length-1?<Button onClick={()=>setStep(s=>s+1)}>Continue <ArrowRight/></Button>:<Button disabled={busy} onClick={finish}>{busy?'Building your field workspace…':'Enter my MihiMura dashboard'} <ArrowRight/></Button>}</div></div></main></div>}
+const stepMeta = [
+  ['Location', MapPin],
+  ['Crops', Sprout],
+  ['Farm style', Waves],
+  ['Guidance', Languages],
+  ['Accessibility', Accessibility],
+  ['Consent', Check],
+] as const;
+export default function OnboardingJourney() {
+  const nav = useNavigate();
+  const { completeOnboarding, user } = useAuth();
+  const pending = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('mihimura_pending_identity') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [d, setD] = useState<any>({
+    name: pending.name || user?.displayName || '',
+    role: pending.role || user?.requestedRole || 'farmer',
+    language: 'English',
+    district: 'Ampara',
+    ds_division: '',
+    gn_division: '',
+    crops: ['Paddy', 'Chilli'],
+    farm_type: 'owner',
+    irrigation: 'Irrigation canal',
+    experience: 'Experienced',
+    guidance_mode: 'Voice + visual cards',
+    notification_channels: 'Push + SMS fallback',
+    accessibility: { largeText: false, highContrast: false, audioNumbers: true },
+    location_consent: false,
+    lat: 7.291,
+    lon: 81.674,
+  });
+  const set = (k: string, v: any) => setD((x: any) => ({ ...x, [k]: v }));
+  const locate = () =>
+    navigator.geolocation?.getCurrentPosition(
+      (p) =>
+        setD((x: any) => ({ ...x, lat: p.coords.latitude, lon: p.coords.longitude, location_consent: true })),
+      () => alert('Location unavailable. You can continue with the manual district.'),
+    );
+  const finish = async () => {
+    setBusy(true);
+    await completeOnboarding({ ...d, primary_crops_json: d.crops, accessibility_json: d.accessibility });
+    sessionStorage.removeItem('mihimura_pending_identity');
+    setBusy(false);
+    nav('/app/dashboard', { replace: true });
+  };
+  return (
+    <div className="onboarding-shell">
+      <aside className="onboarding-side">
+        <div className="onboard-brand">
+          <Sprout />
+          <b>MihiMura</b>
+        </div>
+        <span>First-time setup</span>
+        <h1>Build the context behind better decisions.</h1>
+        <p>
+          Optional details can be changed later. Location, sharing and purchasing consent are requested only
+          when needed.
+        </p>
+        <div className="onboarding-steps">
+          {stepMeta.map(([label, Icon], i) => (
+            <div className={`${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`} key={label}>
+              <i>{i < step ? <Check /> : <Icon />}</i>
+              <span>
+                <small>0{i + 1}</small>
+                <b>{label}</b>
+              </span>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <main className="onboarding-main">
+        <div className="onboard-top">
+          <span>
+            Step {step + 1} of {stepMeta.length}
+          </span>
+          <button onClick={() => nav('/welcome')}>Exit setup</button>
+        </div>
+        <div className="onboard-card">
+          {step === 0 && (
+            <>
+              <span className="onboard-kicker">
+                <MapPin /> Your local context
+              </span>
+              <h2>Where should MihiMura look first?</h2>
+              <p>
+                GPS improves local forecasts, while manual administrative areas remain available as a
+                privacy-friendly fallback.
+              </p>
+              <button className="location-action" onClick={locate}>
+                <LocateFixed />
+                <div>
+                  <b>Use my current location</b>
+                  <small>
+                    {d.location_consent
+                      ? `${d.lat.toFixed(4)}, ${d.lon.toFixed(4)} captured`
+                      : 'Browser will ask for permission only now'}
+                  </small>
+                </div>
+                <ArrowRight />
+              </button>
+              <div className="field-grid">
+                <label>
+                  District
+                  <select value={d.district} onChange={(e) => set('district', e.target.value)}>
+                    {districts.map((x) => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Divisional Secretariat
+                  <input
+                    value={d.ds_division}
+                    onChange={(e) => set('ds_division', e.target.value)}
+                    placeholder="Secretariat name here "
+                  />
+                </label>
+                <label>
+                  Grama Niladhari division <em>optional</em>
+                  <input
+                    value={d.gn_division}
+                    onChange={(e) => set('gn_division', e.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+              </div>
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <span className="onboard-kicker">
+                <Sprout /> Crop focus
+              </span>
+              <h2>What do you grow?</h2>
+              <p>Select the crops that should appear first in projects, advisories and image guidance.</p>
+              <div className="crop-picker">
+                {[
+                  'Paddy',
+                  'Chilli',
+                  'Coconut',
+                  'Tea',
+                  'Maize',
+                  'Onion',
+                  'Tomato',
+                  'Brinjal',
+                  'Banana',
+                  'Cinnamon',
+                ].map((c) => (
+                  <button
+                    key={c}
+                    className={d.crops.includes(c) ? 'active' : ''}
+                    onClick={() =>
+                      set(
+                        'crops',
+                        d.crops.includes(c) ? d.crops.filter((x: string) => x !== c) : [...d.crops, c],
+                      )
+                    }
+                  >
+                    {c}
+                    {d.crops.includes(c) && <Check />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <span className="onboard-kicker">
+                <Droplets /> Farm operating context
+              </span>
+              <h2>How is your farm managed?</h2>
+              <div className="choice-grid">
+                {[
+                  ['owner', 'I own / manage the farm', 'Personal decisions and field history'],
+                  ['manager', 'I manage multiple plots', 'Assignments, teams and analytics'],
+                  ['helper', 'I support another farmer', 'Shared access and assisted use'],
+                ].map((x) => (
+                  <button
+                    className={d.farm_type === x[0] ? 'active' : ''}
+                    onClick={() => set('farm_type', x[0])}
+                    key={x[0]}
+                  >
+                    <b>{x[1]}</b>
+                    <small>{x[2]}</small>
+                  </button>
+                ))}
+              </div>
+              <div className="field-grid">
+                <label>
+                  Irrigation availability
+                  <select value={d.irrigation} onChange={(e) => set('irrigation', e.target.value)}>
+                    <option>Irrigation canal</option>
+                    <option>Rain-fed</option>
+                    <option>Tube well</option>
+                    <option>Drip irrigation</option>
+                    <option>Mixed</option>
+                  </select>
+                </label>
+                <label>
+                  Experience
+                  <select value={d.experience} onChange={(e) => set('experience', e.target.value)}>
+                    <option>New farmer</option>
+                    <option>Intermediate</option>
+                    <option>Experienced</option>
+                    <option>Professional manager</option>
+                  </select>
+                </label>
+              </div>
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <span className="onboard-kicker">
+                <Languages /> Language & guidance
+              </span>
+              <h2>How should guidance reach you?</h2>
+              <div className="language-cards">
+                {[
+                  ['English', 'EN', 'English'],
+                  ['Sinhala', 'සි', 'සිංහල'],
+                  ['Tamil', 'த', 'தமிழ்'],
+                ].map((x) => (
+                  <button
+                    className={d.language === x[0] ? 'active' : ''}
+                    onClick={() => set('language', x[0])}
+                    key={x[0]}
+                  >
+                    <i>{x[1]}</i>
+                    <b>{x[2]}</b>
+                  </button>
+                ))}
+              </div>
+              <div className="field-grid">
+                <label>
+                  Guidance style
+                  <select value={d.guidance_mode} onChange={(e) => set('guidance_mode', e.target.value)}>
+                    <option>Voice + visual cards</option>
+                    <option>Text first</option>
+                    <option>Illustrated steps</option>
+                    <option>Large text + voice</option>
+                  </select>
+                </label>
+                <label>
+                  Notifications
+                  <select
+                    value={d.notification_channels}
+                    onChange={(e) => set('notification_channels', e.target.value)}
+                  >
+                    <option>Push + SMS fallback</option>
+                    <option>Push only</option>
+                    <option>SMS only</option>
+                    <option>Quiet mode</option>
+                  </select>
+                </label>
+              </div>
+            </>
+          )}
+          {step === 4 && (
+            <>
+              <span className="onboard-kicker">
+                <Accessibility /> Accessible by design
+              </span>
+              <h2>Choose any assistance you want.</h2>
+              <div className="switch-list">
+                <label>
+                  <span>
+                    <b>Large interface text</b>
+                    <small>Increase important labels and touch targets.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={d.accessibility.largeText}
+                    onChange={(e) =>
+                      set('accessibility', { ...d.accessibility, largeText: e.target.checked })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>
+                    <b>Higher contrast</b>
+                    <small>Increase separation between status and background.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={d.accessibility.highContrast}
+                    onChange={(e) =>
+                      set('accessibility', { ...d.accessibility, highContrast: e.target.checked })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>
+                    <b>Read critical numbers aloud</b>
+                    <small>Repeat quantities, dates and warnings in voice mode.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={d.accessibility.audioNumbers}
+                    onChange={(e) =>
+                      set('accessibility', { ...d.accessibility, audioNumbers: e.target.checked })
+                    }
+                  />
+                </label>
+              </div>
+            </>
+          )}
+          {step === 5 && (
+            <>
+              <span className="onboard-kicker">
+                <Check /> Privacy & control
+              </span>
+              <h2>You stay in control of consequential actions.</h2>
+              <div className="consent-summary">
+                <div>
+                  <Globe2 />
+                  <span>
+                    <b>Location</b>
+                    <p>Used for weather and regional context only when enabled.</p>
+                  </span>
+                </div>
+                <div>
+                  <BellRing />
+                  <span>
+                    <b>Notifications</b>
+                    <p>Quiet hours and channels can be changed at any time.</p>
+                  </span>
+                </div>
+                <div>
+                  <UserRound />
+                  <span>
+                    <b>Farm data ownership</b>
+                    <p>
+                      You control sharing, export and deletion. Orders and expert referrals require explicit
+                      confirmation.
+                    </p>
+                  </span>
+                </div>
+              </div>
+              <label className="consent-check">
+                <input
+                  type="checkbox"
+                  checked={d.location_consent}
+                  onChange={(e) => set('location_consent', e.target.checked)}
+                />
+                Allow location-aware guidance for this profile. Manual district fallback remains available.
+              </label>
+              {['agronomist', 'supplier', 'analyst'].includes(d.role) && (
+                <div className="professional-pending-note">
+                  <Check />
+                  <span>
+                    <b>Professional workspace verification</b>
+                    <p>
+                      Your account can use farmer-facing tools immediately. Access to expert, supplier or
+                      regional analytics data is unlocked only after an administrator verifies the
+                      professional role.
+                    </p>
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+          <div className="onboard-actions">
+            <Button variant="ghost" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
+              <ArrowLeft /> Back
+            </Button>
+            {step < stepMeta.length - 1 ? (
+              <Button onClick={() => setStep((s) => s + 1)}>
+                Continue <ArrowRight />
+              </Button>
+            ) : (
+              <Button disabled={busy} onClick={finish}>
+                {busy ? 'Building your field workspace…' : 'Enter my MihiMura dashboard'} <ArrowRight />
+              </Button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

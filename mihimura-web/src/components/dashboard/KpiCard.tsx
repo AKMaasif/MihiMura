@@ -25,14 +25,23 @@ export function KpiCard({ label, value, note, trend, tone, icon: Icon, sparkline
   return (
     <article className={`kpi-card tone-${tone}`}>
       <div className="kpi-card__top">
-        <div className="kpi-icon"><Icon size={19} /></div>
+        <div className="kpi-icon">
+          <Icon size={19} />
+        </div>
         {trend && <span className="kpi-trend">{trend}</span>}
       </div>
       <div className="kpi-label">{label}</div>
       <div className="kpi-main-row">
         <strong className="kpi-value">{value}</strong>
         <svg className="kpi-sparkline" viewBox="0 0 96 36" aria-hidden="true">
-          <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <polyline
+            points={points}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
       <p className="kpi-note">{note}</p>
