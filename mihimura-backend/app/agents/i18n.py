@@ -287,6 +287,24 @@ TEXT: dict[str, dict[str, Any]] = {
             "counter": "வயல் தகவல், forecast, protocol அல்லது market evidence மாறினால் பரிந்துரையும் மாறலாம்.",
         },
     },
+    # ----------------------------------------- full report generated (endpoint)
+    "report_generated": {
+        EN: {
+            "ready": "The complete report has now been generated and stored privately. Open the PDF for the full agronomy, equipment/tools, input, cost/profit, harvest and marketing plan.",
+            "action": "Open the generated report, then refine any estimate with actual local quotations or field evidence.",
+            "failed": "The report content is ready, but PDF generation could not complete in this request.",
+        },
+        SI: {
+            "ready": "සම්පූර්ණ වාර්තාව දැන් සකස් කර පුද්ගලිකව ගබඩා කර ඇත. සම්පූර්ණ වගා, උපකරණ/මෙවලම්, ආදාන, වියදම්/ලාභ, අස්වැන්න සහ අලෙවි සැලැස්ම සඳහා PDF එක විවෘත කරන්න.",
+            "action": "සකස් කළ වාර්තාව විවෘත කර, සැබෑ දේශීය මිල ගණන් හෝ ක්ෂේත්‍ර දත්ත ලැබුණු විට ඇස්තමේන්තු යාවත්කාලීන කරන්න.",
+            "failed": "වාර්තා අන්තර්ගතය සූදානම් නමුත් මෙම ඉල්ලීමේදී PDF එක සම්පූර්ණ කිරීමට නොහැකි විය.",
+        },
+        TA: {
+            "ready": "முழுமையான அறிக்கை இப்போது உருவாக்கப்பட்டு தனிப்பட்ட முறையில் சேமிக்கப்பட்டுள்ளது. முழு சாகுபடி, உபகரணங்கள்/கருவிகள், உள்ளீடுகள், செலவு/லாபம், அறுவடை மற்றும் சந்தைப்படுத்தல் திட்டத்திற்காக PDF-ஐ திறக்கவும்.",
+            "action": "உருவாக்கப்பட்ட அறிக்கையை திறந்து, உண்மையான உள்ளூர் விலைப்புள்ளிகள் அல்லது வயல் தரவு கிடைக்கும் போது மதிப்பீடுகளை புதுப்பிக்கவும்.",
+            "failed": "அறிக்கை உள்ளடக்கம் தயாராக உள்ளது; ஆனால் இந்த கோரிக்கையில் PDF உருவாக்கத்தை முடிக்க முடியவில்லை.",
+        },
+    },
     # -------------------------------------------- generic defaults for any reply
     "defaults": {
         EN: {

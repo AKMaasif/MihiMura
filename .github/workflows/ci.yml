@@ -15,13 +15,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version-file: mihimura-backend/.python-version
+          cache: pip
+          cache-dependency-path: mihimura-backend/requirements.txt
+      - name: Install Sinhala/Tamil PDF fonts (same as the Docker image)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-core
       - name: Install backend dependencies
         run: pip install -r requirements.txt
       - name: Compile Python
         run: python -m compileall -q app
-      - name: Run deterministic conversation-memory regression
-        run: python tests/context_memory_test.py
+      - name: Run offline regression tests
+        # smoke_test.py needs a real Supabase project, so it is run manually.
+        run: |
+          set -e
+          for test in tests/*_test.py; do
+            if [ "$test" = "tests/smoke_test.py" ]; then continue; fi
+            echo "::group::$test"
+            python "$test"
+            echo "::endgroup::"
+          done
 
   frontend:
     runs-on: ubuntu-latest
@@ -33,7 +45,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: mihimura-web/package-lock.json
       - name: Install frontend dependencies
-        run: npm install
-      - name: Build frontend
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check and build
         run: npm run build

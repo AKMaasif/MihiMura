@@ -13,8 +13,9 @@ Describe the user workflow, API contract or operational behavior changed by this
 ## Verification
 
 - [ ] `python -m compileall -q app`
-- [ ] `python tests/smoke_test.py`
-- [ ] `npm run build`
+- [ ] Offline tests: `for t in tests/*_test.py; do python $t; done` (CI runs these)
+- [ ] `python tests/smoke_test.py` (needs a configured Supabase project)
+- [ ] `npm run lint && npm run build`
 - [ ] Relevant page/workflow tested manually
 
 ## Screenshots / demo notes
