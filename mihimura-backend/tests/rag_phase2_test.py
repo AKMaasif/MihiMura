@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app.services.knowledge_base import chunk_pages, extract_pages, search_knowledge
 
 
