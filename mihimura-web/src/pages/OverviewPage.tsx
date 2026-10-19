@@ -104,30 +104,28 @@ export default function OverviewPage() {
     };
   }, []);
 
-  const provinces: Record<string, ProvinceData> =
-    (dashboard?.provinces ?? {}) as Record<string, ProvinceData>;
+  const provinces: Record<string, ProvinceData> = (dashboard?.provinces ?? {}) as Record<
+    string,
+    ProvinceData
+  >;
   const selectedData = provinces[selectedProvince];
 
   const sortedProvinces = useMemo<ProvinceData[]>(() => {
-    const items: ProvinceData[] =
-      Object.values(provinces);
+    const items: ProvinceData[] = Object.values(provinces);
 
     if (provinceSort === 'name') {
-      return [...items].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
+      return [...items].sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    return [...items].sort(
-      (a, b) =>
-        a.healthScore - b.healthScore
-    );
+    return [...items].sort((a, b) => a.healthScore - b.healthScore);
   }, [provinceSort, provinces]);
 
   if (!dashboard || !selectedData) {
     return (
       <div className="loading-screen">
-        <div className="loading-brand"><Leaf size={24} /> Mihimura</div>
+        <div className="loading-brand">
+          <Leaf size={24} /> Mihimura
+        </div>
         <div className="loading-line" />
         <p>Preparing agricultural intelligence…</p>
       </div>
@@ -146,44 +144,130 @@ export default function OverviewPage() {
     <div className="app-shell">
       <aside className={`sidebar${sidebarOpen ? ' is-open' : ''}`}>
         <div className="brand-block">
-          <div className="brand-mark"><Leaf size={22} /></div>
+          <div className="brand-mark">
+            <Leaf size={22} />
+          </div>
           <div>
             <strong>Mihimura</strong>
             <span>Agri Intelligence</span>
           </div>
-          <button className="sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Close navigation">
+          <button
+            className="sidebar-close"
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close navigation"
+          >
             <X size={20} />
           </button>
         </div>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
-          <button className="nav-link active" type="button" onClick={() => { window.location.hash = "#/app/overview"; }}><LayoutDashboard size={19} /><span>Overview</span></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/overview"; }}><MapIcon size={19} /><span>Province Map</span></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/climate"; }}><BellRing size={19} /><span>Threat Alerts</span><em>{dashboard.summary.criticalThreats}</em></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/farms"; }}><PanelsTopLeft size={19} /><span>Fields</span></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/reports"; }}><BarChart3 size={19} /><span>Analytics</span></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/reports"; }}><FileText size={19} /><span>Reports</span></button>
-          <button className="nav-link" type="button" onClick={() => { window.location.hash = "#/app/settings"; }}><Settings size={19} /><span>Settings</span></button>
+          <button
+            className="nav-link active"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/overview';
+            }}
+          >
+            <LayoutDashboard size={19} />
+            <span>Overview</span>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/overview';
+            }}
+          >
+            <MapIcon size={19} />
+            <span>Province Map</span>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/climate';
+            }}
+          >
+            <BellRing size={19} />
+            <span>Threat Alerts</span>
+            <em>{dashboard.summary.criticalThreats}</em>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/farms';
+            }}
+          >
+            <PanelsTopLeft size={19} />
+            <span>Fields</span>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/reports';
+            }}
+          >
+            <BarChart3 size={19} />
+            <span>Analytics</span>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/reports';
+            }}
+          >
+            <FileText size={19} />
+            <span>Reports</span>
+          </button>
+          <button
+            className="nav-link"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#/app/settings';
+            }}
+          >
+            <Settings size={19} />
+            <span>Settings</span>
+          </button>
         </nav>
 
         <div className="sidebar-system-card">
           <div className="system-row">
             <span className="system-indicator" />
-            <div><small>Data status</small><strong>{dashboard._connection === 'backend' ? 'Backend connected' : 'Demo fallback active'}</strong></div>
+            <div>
+              <small>Data status</small>
+              <strong>
+                {dashboard._connection === 'backend' ? 'Backend connected' : 'Demo fallback active'}
+              </strong>
+            </div>
           </div>
           <div className="system-row">
             <Clock3 size={17} />
-            <div><small>Last synchronised</small><strong>{updatedLabel}</strong></div>
+            <div>
+              <small>Last synchronised</small>
+              <strong>{updatedLabel}</strong>
+            </div>
           </div>
         </div>
 
-        <button className="help-link" type="button"><HelpCircle size={17} /> Help and documentation</button>
+        <button className="help-link" type="button">
+          <HelpCircle size={17} /> Help and documentation
+        </button>
       </aside>
 
       <main className="main-area">
         <header className="topbar">
           <div className="topbar-left">
-            <button type="button" className="icon-button menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+            <button
+              type="button"
+              className="icon-button menu-button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation"
+            >
               <Menu size={21} />
             </button>
             <div>
@@ -192,23 +276,48 @@ export default function OverviewPage() {
             </div>
           </div>
           <div className="topbar-actions">
-            <div className="global-search"><Search size={17} /><input aria-label="Search fields or provinces" placeholder="Search provinces, fields…" /></div>
-            <button type="button" className="compact-control"><Languages size={17} /><span>EN</span><ChevronDown size={14} /></button>
-            <button type="button" className="icon-button notification-button" aria-label="Notifications"><Bell size={19} /><span /></button>
-            <div className="user-chip"><div className="avatar">AV</div><div><strong>Agri Officer</strong><span>National view</span></div><ChevronDown size={15} /></div>
+            <div className="global-search">
+              <Search size={17} />
+              <input aria-label="Search fields or provinces" placeholder="Search provinces, fields…" />
+            </div>
+            <button type="button" className="compact-control">
+              <Languages size={17} />
+              <span>EN</span>
+              <ChevronDown size={14} />
+            </button>
+            <button type="button" className="icon-button notification-button" aria-label="Notifications">
+              <Bell size={19} />
+              <span />
+            </button>
+            <div className="user-chip">
+              <div className="avatar">AV</div>
+              <div>
+                <strong>Agri Officer</strong>
+                <span>National view</span>
+              </div>
+              <ChevronDown size={15} />
+            </div>
           </div>
         </header>
 
         <div className="dashboard-content">
           <section className="page-heading">
             <div>
-              <div className="eyebrow"><MapPin size={14} /> Sri Lanka · All 9 provinces</div>
+              <div className="eyebrow">
+                <MapPin size={14} /> Sri Lanka · All 9 provinces
+              </div>
               <h2>Agricultural Situation Overview</h2>
               <p>Detect changes, understand causes and prioritise interventions from one operational view.</p>
             </div>
             <div className="heading-controls">
-              <button type="button" className="date-control"><Calendar size={17} /><span>Last 7 days</span><ChevronDown size={15} /></button>
-              <button type="button" className="primary-button"><FileText size={17} /> Generate situation report</button>
+              <button type="button" className="date-control">
+                <Calendar size={17} />
+                <span>Last 7 days</span>
+                <ChevronDown size={15} />
+              </button>
+              <button type="button" className="primary-button">
+                <FileText size={17} /> Generate situation report
+              </button>
             </div>
           </section>
 
@@ -264,7 +373,13 @@ export default function OverviewPage() {
             <article className="card map-card">
               <header className="card-header map-card-header">
                 <div>
-                  <div className="card-title-row"><MapIcon size={20} /><h3>Agricultural Risk Map</h3><button className="info-button" type="button" aria-label="Map information">i</button></div>
+                  <div className="card-title-row">
+                    <MapIcon size={20} />
+                    <h3>Agricultural Risk Map</h3>
+                    <button className="info-button" type="button" aria-label="Map information">
+                      i
+                    </button>
+                  </div>
                   <p>{layerDescriptions[activeLayer]}</p>
                 </div>
                 <div className="layer-tabs" role="tablist" aria-label="Map data layers">
@@ -285,8 +400,14 @@ export default function OverviewPage() {
 
               <div className="map-content">
                 <div className="map-summary-overlay">
-                  <div className="map-summary-icon"><CloudSun size={21} /></div>
-                  <div><span>National monitoring</span><strong>9 provinces · 25 districts</strong><small>Satellite, weather, IoT and farmer reports</small></div>
+                  <div className="map-summary-icon">
+                    <CloudSun size={21} />
+                  </div>
+                  <div>
+                    <span>National monitoring</span>
+                    <strong>9 provinces · 25 districts</strong>
+                    <small>Satellite, weather, IoT and farmer reports</small>
+                  </div>
                 </div>
 
                 <SriLankaProvinceMap
@@ -311,7 +432,13 @@ export default function OverviewPage() {
 
             <aside className="card province-detail-card">
               <header className="province-detail-header">
-                <div><span className="status-dot" style={{ background: selectedColor }} /><div><small>Selected province</small><h3>{selectedProvince} Province</h3></div></div>
+                <div>
+                  <span className="status-dot" style={{ background: selectedColor }} />
+                  <div>
+                    <small>Selected province</small>
+                    <h3>{selectedProvince} Province</h3>
+                  </div>
+                </div>
                 <span className={`risk-badge ${riskClass(selectedRisk)}`}>{selectedRisk}</span>
               </header>
 
@@ -321,28 +448,65 @@ export default function OverviewPage() {
                   <span>{layerLabels[activeLayer]} score</span>
                   <strong style={{ color: selectedColor }}>{selectedRisk}</strong>
                   <p className={selectedData.trend >= 0 ? 'positive-text' : 'negative-text'}>
-                    {selectedData.trend >= 0 ? '↑' : '↓'} {Math.abs(selectedData.trend)} points <span>vs last 7 days</span>
+                    {selectedData.trend >= 0 ? '↑' : '↓'} {Math.abs(selectedData.trend)} points{' '}
+                    <span>vs last 7 days</span>
                   </p>
                 </div>
               </div>
 
               <div className="province-metrics">
-                <div className="metric-box"><AlertTriangle size={18} /><span>Active alerts</span><strong>{selectedData.activeAlerts}</strong></div>
-                <div className="metric-box"><CloudRain size={18} /><span>Rainfall · 7d</span><strong>{selectedData.rainfall7d} mm</strong><small>{selectedData.rainfallAvgDiff}% vs average</small></div>
-                <div className="metric-box"><Leaf size={18} /><span>Crop coverage</span><strong>{selectedData.cropCoverage}%</strong><small>of arable land</small></div>
-                <div className="metric-box"><Sprout size={18} /><span>Top crop</span><strong>{selectedData.topCrop}</strong></div>
+                <div className="metric-box">
+                  <AlertTriangle size={18} />
+                  <span>Active alerts</span>
+                  <strong>{selectedData.activeAlerts}</strong>
+                </div>
+                <div className="metric-box">
+                  <CloudRain size={18} />
+                  <span>Rainfall · 7d</span>
+                  <strong>{selectedData.rainfall7d} mm</strong>
+                  <small>{selectedData.rainfallAvgDiff}% vs average</small>
+                </div>
+                <div className="metric-box">
+                  <Leaf size={18} />
+                  <span>Crop coverage</span>
+                  <strong>{selectedData.cropCoverage}%</strong>
+                  <small>of arable land</small>
+                </div>
+                <div className="metric-box">
+                  <Sprout size={18} />
+                  <span>Top crop</span>
+                  <strong>{selectedData.topCrop}</strong>
+                </div>
               </div>
 
               <div className="moisture-panel">
-                <div className="moisture-heading"><div><Droplets size={17} /><span>Soil moisture</span></div><strong>{selectedData.soilMoisture}%</strong></div>
-                <div className="moisture-scale"><span className="moisture-current" style={{ left: `${selectedData.soilMoisture}%` }} /><span className="moisture-optimal" /></div>
-                <div className="moisture-labels"><span>Dry</span><span>Optimal 31–38%</span><span>Excess</span></div>
+                <div className="moisture-heading">
+                  <div>
+                    <Droplets size={17} />
+                    <span>Soil moisture</span>
+                  </div>
+                  <strong>{selectedData.soilMoisture}%</strong>
+                </div>
+                <div className="moisture-scale">
+                  <span className="moisture-current" style={{ left: `${selectedData.soilMoisture}%` }} />
+                  <span className="moisture-optimal" />
+                </div>
+                <div className="moisture-labels">
+                  <span>Dry</span>
+                  <span>Optimal 31–38%</span>
+                  <span>Excess</span>
+                </div>
               </div>
 
               <div className="next-action-box">
-                <div><Route size={18} /><span>Recommended next action</span></div>
+                <div>
+                  <Route size={18} />
+                  <span>Recommended next action</span>
+                </div>
                 <strong>{selectedData.nextAction}</strong>
-                <button type="button">Open intervention plan <ChevronRight size={16} /></button>
+                <button type="button">
+                  Open intervention plan <ChevronRight size={16} />
+                </button>
               </div>
             </aside>
           </section>
@@ -350,14 +514,32 @@ export default function OverviewPage() {
           <section className="decision-grid">
             <article className="card changes-card">
               <header className="card-header">
-                <div><div className="card-title-row"><TrendingUp size={20} /><h3>What changed since yesterday?</h3></div><p>Changes that may alter today’s field priorities</p></div>
-                <button className="text-button" type="button">View timeline <ChevronRight size={15} /></button>
+                <div>
+                  <div className="card-title-row">
+                    <TrendingUp size={20} />
+                    <h3>What changed since yesterday?</h3>
+                  </div>
+                  <p>Changes that may alter today’s field priorities</p>
+                </div>
+                <button className="text-button" type="button">
+                  View timeline <ChevronRight size={15} />
+                </button>
               </header>
               <div className="changes-list">
                 {dashboard.changes.map((change: ChangeItem) => (
-                  <button type="button" className="change-item" key={change.id} onClick={() => change.province !== 'National' && setSelectedProvince(change.province)}>
-                    <span className={`change-icon ${change.tone}`}><TrendingUp size={17} /></span>
-                    <div><strong>{change.title}</strong><p>{change.detail}</p></div>
+                  <button
+                    type="button"
+                    className="change-item"
+                    key={change.id}
+                    onClick={() => change.province !== 'National' && setSelectedProvince(change.province)}
+                  >
+                    <span className={`change-icon ${change.tone}`}>
+                      <TrendingUp size={17} />
+                    </span>
+                    <div>
+                      <strong>{change.title}</strong>
+                      <p>{change.detail}</p>
+                    </div>
                     <em>{change.province}</em>
                   </button>
                 ))}
@@ -366,21 +548,43 @@ export default function OverviewPage() {
 
             <article className="card actions-card">
               <header className="card-header">
-                <div><div className="card-title-row"><ShieldAlert size={20} /><h3>Priority Actions</h3></div><p>Ranked by urgency, impact and AI confidence</p></div>
-                <button className="text-button" type="button">All actions <ChevronRight size={15} /></button>
+                <div>
+                  <div className="card-title-row">
+                    <ShieldAlert size={20} />
+                    <h3>Priority Actions</h3>
+                  </div>
+                  <p>Ranked by urgency, impact and AI confidence</p>
+                </div>
+                <button className="text-button" type="button">
+                  All actions <ChevronRight size={15} />
+                </button>
               </header>
               <div className="priority-list">
-                {dashboard.priorityActions
-                  .slice(0, 3)
-                  .map((action: PriorityAction) => (
-                    <div className="priority-item" key={action.id}>
-                      <div className="priority-topline"><span className={`severity-chip ${action.severity.toLowerCase()}`}>{action.severity}</span><span>{action.province}</span><time><Clock3 size={13} /> {action.deadline}</time></div>
-                      <h4>{action.title}</h4>
-                      <p>{action.description}</p>
-                      <div className="evidence-line"><BrainCircuit size={15} /><span>{action.evidence}</span></div>
-                      <div className="priority-footer"><strong>{action.impact}</strong><button type="button">{action.buttonText} <ChevronRight size={15} /></button></div>
+                {dashboard.priorityActions.slice(0, 3).map((action: PriorityAction) => (
+                  <div className="priority-item" key={action.id}>
+                    <div className="priority-topline">
+                      <span className={`severity-chip ${action.severity.toLowerCase()}`}>
+                        {action.severity}
+                      </span>
+                      <span>{action.province}</span>
+                      <time>
+                        <Clock3 size={13} /> {action.deadline}
+                      </time>
                     </div>
-                  ))}
+                    <h4>{action.title}</h4>
+                    <p>{action.description}</p>
+                    <div className="evidence-line">
+                      <BrainCircuit size={15} />
+                      <span>{action.evidence}</span>
+                    </div>
+                    <div className="priority-footer">
+                      <strong>{action.impact}</strong>
+                      <button type="button">
+                        {action.buttonText} <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </article>
           </section>
@@ -388,25 +592,78 @@ export default function OverviewPage() {
           <section className="analytics-grid">
             <article className="card province-table-card">
               <header className="card-header">
-                <div><div className="card-title-row"><BarChart3 size={20} /><h3>Province Performance</h3></div><p>Health, threat level and operational next step</p></div>
-                <button className="sort-button" type="button" onClick={() => setProvinceSort((current) => current === 'risk' ? 'name' : 'risk')}>
+                <div>
+                  <div className="card-title-row">
+                    <BarChart3 size={20} />
+                    <h3>Province Performance</h3>
+                  </div>
+                  <p>Health, threat level and operational next step</p>
+                </div>
+                <button
+                  className="sort-button"
+                  type="button"
+                  onClick={() => setProvinceSort((current) => (current === 'risk' ? 'name' : 'risk'))}
+                >
                   Sort by {provinceSort === 'risk' ? 'risk' : 'name'} <ChevronDown size={14} />
                 </button>
               </header>
               <div className="table-scroll">
                 <table className="province-table">
-                  <thead><tr><th>Province</th><th>Crop health</th><th>Rain risk</th><th>Pest risk</th><th>Area at risk</th><th>Trend</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Province</th>
+                      <th>Crop health</th>
+                      <th>Rain risk</th>
+                      <th>Pest risk</th>
+                      <th>Area at risk</th>
+                      <th>Trend</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {sortedProvinces.map((province) => {
                       const risk = getLayerRiskLevel(province.healthScore, 'cropHealth');
                       return (
-                        <tr key={province.id} className={province.name === selectedProvince ? 'selected' : ''} onClick={() => setSelectedProvince(province.name)}>
-                          <td><span className="table-province-dot" style={{ background: getRiskColor(risk) }} /><strong>{province.name}</strong><small>{province.topCrop}</small></td>
-                          <td><div className="score-cell"><span>{province.healthScore}</span><div><i style={{ width: `${province.healthScore}%`, background: getRiskColor(risk) }} /></div></div></td>
-                          <td><span className={`mini-score ${riskClass(getLayerRiskLevel(province.rainfallRisk, 'rainfallRisk'))}`}>{province.rainfallRisk}</span></td>
-                          <td><span className={`mini-score ${riskClass(getLayerRiskLevel(province.pestRisk, 'pestRisk'))}`}>{province.pestRisk}</span></td>
+                        <tr
+                          key={province.id}
+                          className={province.name === selectedProvince ? 'selected' : ''}
+                          onClick={() => setSelectedProvince(province.name)}
+                        >
+                          <td>
+                            <span className="table-province-dot" style={{ background: getRiskColor(risk) }} />
+                            <strong>{province.name}</strong>
+                            <small>{province.topCrop}</small>
+                          </td>
+                          <td>
+                            <div className="score-cell">
+                              <span>{province.healthScore}</span>
+                              <div>
+                                <i
+                                  style={{
+                                    width: `${province.healthScore}%`,
+                                    background: getRiskColor(risk),
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={`mini-score ${riskClass(getLayerRiskLevel(province.rainfallRisk, 'rainfallRisk'))}`}
+                            >
+                              {province.rainfallRisk}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`mini-score ${riskClass(getLayerRiskLevel(province.pestRisk, 'pestRisk'))}`}
+                            >
+                              {province.pestRisk}
+                            </span>
+                          </td>
                           <td>{province.atRiskArea} ac</td>
-                          <td className={province.trend >= 0 ? 'positive-text' : 'negative-text'}>{province.trend >= 0 ? '↑' : '↓'} {Math.abs(province.trend)}</td>
+                          <td className={province.trend >= 0 ? 'positive-text' : 'negative-text'}>
+                            {province.trend >= 0 ? '↑' : '↓'} {Math.abs(province.trend)}
+                          </td>
                         </tr>
                       );
                     })}
@@ -417,29 +674,53 @@ export default function OverviewPage() {
 
             <article className="card agent-card">
               <header className="card-header">
-                <div><div className="card-title-row"><BrainCircuit size={20} /><h3>Multi-Agent Operations</h3></div><p>How the intelligence pipeline reached its recommendations</p></div>
-                <span className="live-pill"><i /> Live</span>
+                <div>
+                  <div className="card-title-row">
+                    <BrainCircuit size={20} />
+                    <h3>Multi-Agent Operations</h3>
+                  </div>
+                  <p>How the intelligence pipeline reached its recommendations</p>
+                </div>
+                <span className="live-pill">
+                  <i /> Live
+                </span>
               </header>
               <div className="agent-flow">
-                {dashboard.agentActivity.map(
-                  (item: AgentActivity, index: number) => {
-                    const AgentIcon = index === 0 ? Satellite : index === 1 ? CloudSun : index === 2 ? Search : Route;
-                    return (
-                      <div className="agent-event" key={item.id}>
-                        <div className={`agent-icon ${item.status}`}><AgentIcon size={18} /></div>
-                        <div><div><strong>{item.agent}</strong><time>{item.time}</time></div><p>{item.action}</p></div>
+                {dashboard.agentActivity.map((item: AgentActivity, index: number) => {
+                  const AgentIcon =
+                    index === 0 ? Satellite : index === 1 ? CloudSun : index === 2 ? Search : Route;
+                  return (
+                    <div className="agent-event" key={item.id}>
+                      <div className={`agent-icon ${item.status}`}>
+                        <AgentIcon size={18} />
                       </div>
-                    );
-                  })}
+                      <div>
+                        <div>
+                          <strong>{item.agent}</strong>
+                          <time>{item.time}</time>
+                        </div>
+                        <p>{item.action}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="agent-reasoning">
                 <strong>Latest reasoning chain</strong>
-                <div><span>Satellite stress</span><ChevronRight size={14} /><span>Climate verified</span><ChevronRight size={14} /><span>Action generated</span></div>
+                <div>
+                  <span>Satellite stress</span>
+                  <ChevronRight size={14} />
+                  <span>Climate verified</span>
+                  <ChevronRight size={14} />
+                  <span>Action generated</span>
+                </div>
               </div>
             </article>
           </section>
 
-          <footer className="dashboard-footer"><Leaf size={16} /> Empowering climate-resilient agriculture with explainable intelligence</footer>
+          <footer className="dashboard-footer">
+            <Leaf size={16} /> Empowering climate-resilient agriculture with explainable intelligence
+          </footer>
         </div>
       </main>
 
@@ -447,4 +728,3 @@ export default function OverviewPage() {
     </div>
   );
 }
-

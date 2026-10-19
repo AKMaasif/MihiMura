@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return latest;
   };
 
-  const useSession = async (session: Session | null) => {
+  const applySession = async (session: Session | null) => {
     if (!session?.user) {
       const rawDemo = localStorage.getItem(DEMO_KEY);
       if (rawDemo) {
@@ -98,9 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (supabase && supabaseConfigured) {
           const { data, error } = await supabase.auth.getSession();
           if (error) throw error;
-          if (alive) await useSession(data.session);
+          if (alive) await applySession(data.session);
         } else if (alive) {
-          await useSession(null);
+          await applySession(null);
         }
       } catch (error) {
         console.error('[AUTH] Initialization failed:', error);
@@ -111,14 +111,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void initialize();
 
-    if (!supabase) return () => { alive = false; };
+    if (!supabase)
+      return () => {
+        alive = false;
+      };
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') sessionStorage.setItem('mihimura_password_recovery', '1');
       // Defer backend calls outside the auth callback itself.
       window.setTimeout(() => {
         if (!alive) return;
         setLoading(true);
-        void useSession(session).finally(() => alive && setLoading(false));
+        void applySession(session)
+          .catch((error) => console.error('[AUTH] Session update failed:', error))
+          .finally(() => alive && setLoading(false));
       }, 0);
     });
 
@@ -129,7 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requireSupabase = () => {
-    if (!supabase || !supabaseConfigured) throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
+    if (!supabase || !supabaseConfigured)
+      throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
     return supabase;
   };
 
@@ -184,7 +190,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = async (email: string) => {
     const client = requireSupabase();
     if (!email) throw new Error('Enter your email address first.');
-    const { data, error } = await client.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/?flow=recovery#/auth?mode=recovery` });
+    const { data, error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/?flow=recovery#/auth?mode=recovery`,
+    });
     if (error) throw error;
     return data;
   };
@@ -199,7 +207,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const demoLogin = async () => {
     if (supabase) await supabase.auth.signOut().catch(() => undefined);
-    const demo: SessionUser = { uid: DEMO_UID, email: 'demo@mihimura.lk', displayName: 'Demo Farmer', provider: 'demo' };
+    const demo: SessionUser = {
+      uid: DEMO_UID,
+      email: 'demo@mihimura.lk',
+      displayName: 'Demo Farmer',
+      provider: 'demo',
+    };
     localStorage.setItem(DEMO_KEY, JSON.stringify(demo));
     setUser(demo);
     const latest = await platformApi.me();
@@ -223,9 +236,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let accessibility: any = {};
     try {
-      accessibility = typeof profile?.accessibility_json === 'string'
-        ? JSON.parse(profile.accessibility_json)
-        : (profile?.accessibility_json || {});
+      accessibility =
+        typeof profile?.accessibility_json === 'string'
+          ? JSON.parse(profile.accessibility_json)
+          : profile?.accessibility_json || {};
     } catch {
       accessibility = {};
     }
@@ -233,23 +247,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle('high-contrast', Boolean(accessibility.highContrast));
   }, [profile]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    user,
-    profile,
-    loading,
-    supabaseConfigured,
-    loginEmail,
-    registerEmail,
-    loginGoogle,
-    sendPhoneOtp,
-    verifyPhoneOtp,
-    resetPassword,
-    updatePassword,
-    demoLogin,
-    logout,
-    completeOnboarding,
-    refreshProfile,
-  }), [user, profile, loading]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      profile,
+      loading,
+      supabaseConfigured,
+      loginEmail,
+      registerEmail,
+      loginGoogle,
+      sendPhoneOtp,
+      verifyPhoneOtp,
+      resetPassword,
+      updatePassword,
+      demoLogin,
+      logout,
+      completeOnboarding,
+      refreshProfile,
+    }),
+    [user, profile, loading],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

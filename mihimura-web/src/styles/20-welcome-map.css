@@ -1,0 +1,766 @@
+/* =========================================================
+   WELCOME PAGE — MAP / CONTROLS / FLOATING CARDS ALIGNMENT
+   Scoped only to the welcome hero
+   ========================================================= */
+
+.welcome-visual {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 570px !important;
+}
+
+
+/* =========================================================
+   MAIN MAP CARD
+   ========================================================= */
+
+.welcome-visual .hero-glass.map {
+  position: absolute !important;
+
+  inset:
+    0
+    4% !important;
+
+  padding: 18px !important;
+
+  overflow: hidden !important;
+
+  border: 1px solid rgba(255,255,255,.82) !important;
+  border-radius: 28px !important;
+
+  background:
+    radial-gradient(
+      circle at 52% 40%,
+      rgba(75,145,94,.09),
+      transparent 44%
+    ),
+    rgba(255,255,255,.78) !important;
+
+  box-shadow:
+    0 28px 70px rgba(22,69,39,.12) !important;
+
+  backdrop-filter: blur(20px) !important;
+}
+
+
+/* =========================================================
+   MAP HEADER
+   ========================================================= */
+
+.welcome-visual .glass-head {
+  position: relative !important;
+
+  z-index: 80 !important;
+
+  height: 38px !important;
+
+  padding: 0 5px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  gap: 10px !important;
+}
+
+.welcome-visual .glass-head > span {
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 7px !important;
+
+  font-size: 10px !important;
+  font-weight: 850 !important;
+
+  color: #25382d !important;
+}
+
+
+/* action badge */
+
+.welcome-visual .glass-head .ui-status {
+  position: static !important;
+
+  margin-left: auto !important;
+
+  flex: 0 0 auto !important;
+}
+
+
+/* =========================================================
+   MAP WORK AREA
+   Reserve a real right-hand control rail
+   ========================================================= */
+
+.welcome-visual
+.hero-glass.map
+.province-map-shell {
+
+  position: absolute !important;
+
+  inset:
+    58px
+    12px
+    12px !important;
+
+  min-height: 0 !important;
+
+  display: grid !important;
+
+  place-items: center !important;
+
+  /*
+     IMPORTANT:
+     Right side intentionally reserved for:
+     zoom/reset + weather + province score
+  */
+  padding:
+    0
+    185px
+    0
+    28px !important;
+
+  overflow: hidden !important;
+
+  background: transparent !important;
+}
+
+
+/* =========================================================
+   SRI LANKA MAP
+   ========================================================= */
+
+.welcome-visual
+.hero-glass.map
+.province-map {
+
+  display: block !important;
+
+  width: min(72%, 380px) !important;
+
+  max-width: 380px !important;
+
+  height: auto !important;
+
+  max-height: 100% !important;
+
+  margin: auto !important;
+
+  overflow: visible !important;
+
+  filter:
+    drop-shadow(
+      0 10px 12px rgba(28,70,40,.09)
+    ) !important;
+}
+
+
+/* =========================================================
+   ZOOM + RESET CONTROLS
+   +  -  reset arranged horizontally
+   ========================================================= */
+
+.welcome-visual
+.hero-glass.map
+.map-zoom-controls {
+
+  position: absolute !important;
+
+  top: 9px !important;
+  right: 10px !important;
+
+  z-index: 90 !important;
+
+  display: flex !important;
+
+  /*
+     Horizontal prevents the controls consuming the
+     entire right edge.
+  */
+  flex-direction: row !important;
+
+  gap: 6px !important;
+}
+
+
+.welcome-visual
+.hero-glass.map
+.map-zoom-controls button {
+
+  width: 36px !important;
+  height: 36px !important;
+
+  padding: 0 !important;
+
+  display: grid !important;
+
+  place-items: center !important;
+
+  border: 1px solid #dae5dc !important;
+  border-radius: 10px !important;
+
+  background: rgba(255,255,255,.97) !important;
+
+  color: #526259 !important;
+
+  box-shadow:
+    0 5px 14px rgba(23,69,39,.08) !important;
+
+  backdrop-filter: blur(8px) !important;
+
+  cursor: pointer !important;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .18s ease !important;
+}
+
+
+.welcome-visual
+.hero-glass.map
+.map-zoom-controls button:hover {
+
+  color: #277246 !important;
+
+  border-color: #a6ceb0 !important;
+
+  background: #f4faf5 !important;
+
+  transform: translateY(-1px) !important;
+}
+
+
+.welcome-visual
+.hero-glass.map
+.map-zoom-controls svg {
+
+  width: 16px !important;
+  height: 16px !important;
+}
+
+
+/* =========================================================
+   SELECTED PROVINCE READOUT
+   ========================================================= */
+
+.welcome-visual
+.hero-glass.map
+.map-hover-readout {
+
+  position: absolute !important;
+
+  top: 66px !important;
+  right: 10px !important;
+
+  bottom: auto !important;
+
+  z-index: 70 !important;
+
+  width: 150px !important;
+  min-width: 150px !important;
+
+  padding: 11px 13px !important;
+
+  border: 1px solid #dce7df !important;
+  border-radius: 13px !important;
+
+  background:
+    rgba(255,255,255,.96) !important;
+
+  box-shadow:
+    0 8px 22px rgba(22,67,38,.08) !important;
+
+  backdrop-filter: blur(12px) !important;
+}
+
+
+.welcome-visual
+.map-hover-readout span {
+
+  display: block !important;
+
+  color: #758279 !important;
+
+  font-size: 8px !important;
+}
+
+
+.welcome-visual
+.map-hover-readout strong {
+
+  display: block !important;
+
+  margin-top: 3px !important;
+
+  color: #1d6039 !important;
+
+  font-size: 16px !important;
+}
+
+
+/* hide duplicate source note in welcome map */
+
+.welcome-visual .map-source-note {
+  display: none !important;
+}
+
+
+/* =========================================================
+   SHARED FLOATING CARDS
+   ========================================================= */
+
+.welcome-visual .hero-float {
+
+  position: absolute !important;
+
+  z-index: 100 !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 10px !important;
+
+  padding: 13px 15px !important;
+
+  border: 1px solid rgba(255,255,255,.94) !important;
+  border-radius: 16px !important;
+
+  background:
+    rgba(255,255,255,.97) !important;
+
+  box-shadow:
+    0 15px 38px rgba(20,64,39,.13),
+    0 2px 7px rgba(20,64,39,.04) !important;
+
+  backdrop-filter: blur(16px) !important;
+}
+
+
+/* =========================================================
+   WEATHER CARD
+   Align with right control rail
+   ========================================================= */
+
+.welcome-visual .hero-float.weather {
+
+  right: 5.2% !important;
+
+  /*
+     Below zoom/reset and province information
+  */
+  top: 190px !important;
+
+  width: 155px !important;
+  min-width: 155px !important;
+
+  padding: 13px 14px !important;
+}
+
+
+.welcome-visual
+.hero-float.weather > svg {
+
+  width: 24px !important;
+  height: 24px !important;
+
+  color: #32804e !important;
+}
+
+
+.welcome-visual
+.hero-float.weather b {
+
+  font-size: 21px !important;
+
+  line-height: 1 !important;
+
+  color: #21392a !important;
+}
+
+
+.welcome-visual
+.hero-float.weather span {
+
+  margin-top: 4px !important;
+
+  color: #849087 !important;
+
+  font-size: 8px !important;
+}
+
+
+/* =========================================================
+   SAFETY AGENT CARD
+   ========================================================= */
+
+.welcome-visual .hero-float.agent {
+
+  left: 5.2% !important;
+
+  bottom: 7% !important;
+
+  width: 270px !important;
+  max-width: 270px !important;
+}
+
+
+.welcome-visual
+.hero-float.agent > svg {
+
+  width: 23px !important;
+  height: 23px !important;
+
+  flex: 0 0 auto !important;
+
+  color: #347d4c !important;
+}
+
+
+.welcome-visual
+.hero-float.agent small {
+
+  display: block !important;
+
+  color: #839087 !important;
+
+  font-size: 8px !important;
+}
+
+
+.welcome-visual
+.hero-float.agent b {
+
+  display: block !important;
+
+  margin-top: 2px !important;
+
+  color: #253b2d !important;
+
+  font-size: 11px !important;
+}
+
+
+.welcome-visual
+.hero-float.agent p {
+
+  margin-top: 4px !important;
+
+  color: #78847c !important;
+
+  font-size: 8px !important;
+
+  line-height: 1.45 !important;
+}
+
+
+/* =========================================================
+   LARGE DESKTOP
+   ========================================================= */
+
+@media (min-width: 1450px) {
+
+  .welcome-visual {
+    min-height: 585px !important;
+  }
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map {
+
+    width: min(74%, 400px) !important;
+
+    max-width: 400px !important;
+  }
+
+}
+
+
+/* =========================================================
+   TABLET / SMALL LAPTOP
+   ========================================================= */
+
+@media (max-width: 1100px) {
+
+  .welcome-visual {
+    min-height: 500px !important;
+  }
+
+  .welcome-visual
+  .hero-glass.map {
+
+    inset: 0 !important;
+  }
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map-shell {
+
+    padding:
+      0
+      155px
+      0
+      18px !important;
+  }
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map {
+
+    width: min(70%, 330px) !important;
+
+    max-width: 330px !important;
+  }
+
+  .welcome-visual
+  .hero-float.weather {
+
+    right: 1.5% !important;
+
+    width: 145px !important;
+    min-width: 145px !important;
+  }
+
+  .welcome-visual
+  .hero-float.agent {
+
+    left: 1.5% !important;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE / TABLET PORTRAIT
+   Floating cards move into normal flow
+   ========================================================= */
+
+@media (max-width: 760px) {
+
+  .welcome-visual {
+
+    min-height: auto !important;
+
+    display: grid !important;
+
+    grid-template-columns: 1fr !important;
+
+    gap: 11px !important;
+  }
+
+
+  .welcome-visual
+  .hero-glass.map {
+
+    position: relative !important;
+
+    inset: auto !important;
+
+    width: 100% !important;
+
+    height: 430px !important;
+
+    padding: 13px !important;
+
+    border-radius: 21px !important;
+  }
+
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map-shell {
+
+    inset:
+      55px
+      6px
+      6px !important;
+
+    padding:
+      38px
+      8px
+      8px !important;
+  }
+
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map {
+
+    width: min(78%, 300px) !important;
+
+    max-width: 300px !important;
+  }
+
+
+  /* keep zoom controls compact on mobile */
+
+  .welcome-visual
+  .hero-glass.map
+  .map-zoom-controls {
+
+    top: 7px !important;
+
+    right: 7px !important;
+
+    flex-direction: row !important;
+  }
+
+
+  .welcome-visual
+  .hero-glass.map
+  .map-zoom-controls button {
+
+    width: 32px !important;
+
+    height: 32px !important;
+  }
+
+
+  /* province status lower-right */
+
+  .welcome-visual
+  .hero-glass.map
+  .map-hover-readout {
+
+    top: auto !important;
+
+    right: 7px !important;
+
+    bottom: 7px !important;
+
+    width: 118px !important;
+
+    min-width: 118px !important;
+
+    padding: 8px 9px !important;
+  }
+
+
+  /*
+     Weather and safety are no longer overlaid on map.
+     This is far cleaner on a phone.
+  */
+
+  .welcome-visual
+  .hero-float.weather,
+
+  .welcome-visual
+  .hero-float.agent {
+
+    position: relative !important;
+
+    inset: auto !important;
+
+    width: 100% !important;
+
+    max-width: none !important;
+
+    min-width: 0 !important;
+
+    min-height: 62px !important;
+
+    border-radius: 15px !important;
+  }
+
+}
+
+
+/* =========================================================
+   SMALL PHONE
+   ========================================================= */
+
+@media (max-width: 430px) {
+
+  .welcome-visual
+  .hero-glass.map {
+
+    height: 390px !important;
+  }
+
+  .welcome-visual
+  .hero-glass.map
+  .province-map {
+
+    width: min(82%, 275px) !important;
+
+    max-width: 275px !important;
+  }
+
+}
+
+/* =========================================================
+   MIHIMURA WELCOME MAP — FULL ISLAND FIT FIX
+   Paste this at the VERY END of src/index.css
+   ========================================================= */
+
+/*
+  The Sri Lanka SVG has a tall aspect ratio: 450 x 793.
+  On small screens, fitting it by width can make it taller than
+  the visible map area. This patch gives the SVG an explicit,
+  safe responsive width and lets height follow its aspect ratio.
+*/
+
+@media (max-width: 980px) {
+  .welcome-visual .hero-glass.map {
+    height: 620px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 62px 10px 10px !important;
+    padding: 44px 10px 10px !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(240px, 40vw, 275px) !important;
+    height: auto !important;
+
+    max-width: calc(100% - 24px) !important;
+    max-height: none !important;
+
+    margin: auto !important;
+    align-self: center !important;
+    justify-self: center !important;
+
+    display: block !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .welcome-visual .hero-glass.map {
+    height: 570px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 58px 8px 8px !important;
+    padding: 42px 8px 10px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(225px, 62vw, 255px) !important;
+    height: auto !important;
+
+    max-width: calc(100% - 20px) !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .welcome-visual .hero-glass.map {
+    height: 540px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map-shell {
+    inset: 57px 7px 7px !important;
+    padding: 40px 7px 8px !important;
+  }
+
+  .welcome-visual .hero-glass.map .province-map {
+    width: clamp(215px, 60vw, 240px) !important;
+    height: auto !important;
+  }
+}

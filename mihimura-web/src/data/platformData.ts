@@ -1,10 +1,27 @@
-export const demoProducts = [
- {id:'p1',name:'Certified Paddy Seed – Bg 352',category:'Seed',price:4200,pack:'20 kg',supplier:'Demo Verified Cooperative',stock:42,compatibility:'Paddy',distance:'7 km',why:'Matches active paddy variety; verify season and seed class.'},
- {id:'p2',name:'Potassium Soil Amendment',category:'Nutrient',price:3650,pack:'10 kg',supplier:'Demo Agri Centre',stock:18,compatibility:'Chilli',distance:'11 km',why:'Shown only after flowering-stage nutrition review.'},
- {id:'p3',name:'Yellow Sticky Traps',category:'Monitoring',price:850,pack:'20 traps',supplier:'Demo Bio Inputs',stock:76,compatibility:'Chilli',distance:'16 km',why:'Low-risk monitoring aid for flying pest pressure.'},
- {id:'p4',name:'Field Soil Moisture Meter',category:'Equipment',price:6900,pack:'1 unit',supplier:'Demo Farm Tech',stock:9,compatibility:'All crops',distance:'22 km',why:'Supports field verification of water-budget estimates.'},
-];
-export const districts=['Ampara','Anuradhapura','Badulla','Batticaloa','Colombo','Galle','Gampaha','Hambantota','Jaffna','Kalutara','Kandy','Kegalle','Kilinochchi','Kurunegala','Mannar','Matale','Matara','Monaragala','Mullaitivu','Nuwara Eliya','Polonnaruwa','Puttalam','Ratnapura','Trincomalee','Vavuniya'];
-export const agentCards=[
- ['Orchestrator','Routes requests, resolves conflicts and produces one accountable response.'],['Farmer Memory','Retrieves farm, project, stage, history and preferences.'],['Geospatial & Satellite','Links field location with province, remote-sensing proxies and spatial context.'],['Micro-Climate','Builds 1–14 day weather risk features with uncertainty.'],['Crop Vision','Analyzes guided crop photos and returns differential diagnoses.'],['Soil & Water','Maintains water budget and soil-risk indicators.'],['Agronomy Planning','Builds stage-aware task calendars from approved knowledge.'],['Intervention & Safety','Blocks unsupported or unsafe actions and checks evidence.'],['Logistics','Finds verified mock products only after action confirmation.'],['Voice & Localization','Supports Sinhala/Tamil/English voice-first delivery.'],['Community Sentinel','Clusters anonymized reports above privacy thresholds.'],['Audit & Explainability','Stores evidence, confidence, user confirmation and outcomes.'],
+export const districts = [
+  'Ampara',
+  'Anuradhapura',
+  'Badulla',
+  'Batticaloa',
+  'Colombo',
+  'Galle',
+  'Gampaha',
+  'Hambantota',
+  'Jaffna',
+  'Kalutara',
+  'Kandy',
+  'Kegalle',
+  'Kilinochchi',
+  'Kurunegala',
+  'Mannar',
+  'Matale',
+  'Matara',
+  'Monaragala',
+  'Mullaitivu',
+  'Nuwara Eliya',
+  'Polonnaruwa',
+  'Puttalam',
+  'Ratnapura',
+  'Trincomalee',
+  'Vavuniya',
 ];

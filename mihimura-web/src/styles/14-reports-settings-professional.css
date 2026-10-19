@@ -1,0 +1,855 @@
+/* Reports/settings/professional */
+.bar-chart {
+  display: grid;
+  gap: 10px
+}
+
+.bar-chart label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px
+}
+
+.bar-chart label>span,
+.bar-chart label>b {
+  font-size: 7px
+}
+
+.bar-chart label>i {
+  grid-column: 1/-1;
+  height: 7px;
+  border-radius: 7px;
+  background: #edf1ee;
+  overflow: hidden
+}
+
+.bar-chart em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4c9762, #7db28c)
+}
+
+.passport-large {
+  display: flex;
+  align-items: center;
+  gap: 10px
+}
+
+.passport-large>div {
+  display: flex;
+  align-items: baseline;
+  gap: 2px
+}
+
+.passport-large strong {
+  font-size: 42px
+}
+
+.passport-large span {
+  font-size: 8px;
+  color: #8a958e
+}
+
+.passport-large .ui-status {
+  margin-left: 6px
+}
+
+.passport-large>p {
+  color: #758278;
+  font-size: 8px
+}
+
+.sdg-report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px
+}
+
+.sdg-report-grid>div {
+  display: grid;
+  grid-template-columns: 45px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  color: #fff;
+  background: #2f7348
+}
+
+.sdg-report-grid>div:nth-child(2) {
+  background: #397ba2
+}
+
+.sdg-report-grid>div:nth-child(3) {
+  background: #677b39
+}
+
+.sdg-report-grid i {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 10px;
+  font-style: normal;
+  font-size: 15px;
+  font-weight: 900
+}
+
+.sdg-report-grid b {
+  font-size: 9px
+}
+
+.sdg-report-grid p {
+  margin-top: 3px;
+  font-size: 6px;
+  opacity: .75
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px
+}
+
+.settings-grid .ui-card {
+  display: grid;
+  align-content: start;
+  gap: 11px
+}
+
+.settings-note {
+  padding: 10px;
+  border-radius: 10px;
+  background: #f4f8f5
+}
+
+.settings-note b {
+  font-size: 8px
+}
+
+.settings-note p {
+  margin-top: 3px;
+  color: #819087;
+  font-size: 7px;
+  line-height: 1.45
+}
+
+.security-list {
+  display: grid;
+  gap: 6px
+}
+
+.security-list>div {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #e3e9e4;
+  border-radius: 9px
+}
+
+.security-list svg {
+  width: 15px;
+  color: #347a4b
+}
+
+.security-list b,
+.security-list small {
+  display: block
+}
+
+.security-list b {
+  font-size: 7px
+}
+
+.security-list small {
+  font-size: 5px;
+  color: #8d9790
+}
+
+.stack-actions {
+  display: grid;
+  gap: 6px
+}
+
+.expert-queue-list {
+  display: grid;
+  gap: 9px
+}
+
+.expert-queue-list>div {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr auto;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #e2e8e3;
+  border-radius: 11px
+}
+
+.case-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px
+}
+
+.case-main b {
+  font-size: 8px
+}
+
+.case-main p {
+  margin-top: 3px;
+  color: #78857c;
+  font-size: 7px
+}
+
+.case-main small {
+  display: block;
+  margin-top: 3px;
+  color: #929b95;
+  font-size: 6px
+}
+
+.case-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  gap: 4px
+}
+
+.case-evidence>small {
+  width: 100%;
+  font-size: 6px;
+  color: #8a958e
+}
+
+.case-evidence span {
+  padding: 4px 5px;
+  border-radius: 5px;
+  background: #f1f5f2;
+  font-size: 5px
+}
+
+.case-actions {
+  display: grid;
+  align-content: start;
+  gap: 4px
+}
+
+.gov-table {
+  display: grid
+}
+
+.gov-table>div {
+  display: grid;
+  grid-template-columns: 120px 1fr 70px 70px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid #e5ebe6
+}
+
+.gov-table b,
+.gov-table span,
+.gov-table strong {
+  font-size: 7px
+}
+
+.governance-list {
+  display: grid
+}
+
+.governance-list>div {
+  display: grid;
+  grid-template-columns: 25px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e6ece7
+}
+
+.governance-list svg {
+  width: 14px;
+  color: #347a4b
+}
+
+.governance-list span {
+  font-size: 7px
+}
+
+.source-status-list {
+  display: grid
+}
+
+.source-status-list>div {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e6ece7
+}
+
+.source-status-list i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #49a265
+}
+
+.source-status-list i.optional {
+  background: #d6b64c
+}
+
+.source-status-list i.integration {
+  background: #4389c6
+}
+
+.source-status-list b,
+.source-status-list small {
+  display: block
+}
+
+.source-status-list b {
+  font-size: 7px
+}
+
+.source-status-list small {
+  font-size: 5px;
+  color: #8b958e
+}
+
+.source-status-list em {
+  font-size: 6px;
+  font-style: normal;
+  color: #7d8981
+}
+
+.audit-table {
+  overflow-x: auto
+}
+
+.audit-table>div {
+  min-width: 780px;
+  display: grid;
+  grid-template-columns: 150px 150px 130px 1fr;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e6ece7
+}
+
+.audit-table time,
+.audit-table b,
+.audit-table span,
+.audit-table code {
+  font-size: 6px
+}
+
+.audit-table code {
+  color: #637269;
+  overflow: hidden;
+  white-space: nowrap
+}
+
+.large-text {
+  font-size: 115%
+}
+
+.high-contrast {
+  --line: #b6c3b9;
+  --muted: #455149
+}
+
+.high-contrast .ui-card,
+.high-contrast .app-sidebar {
+  border-color: #aebbb1
+}
+
+@media(max-width:1200px) {
+  .dashboard-metrics {
+    grid-template-columns: repeat(3, 1fr)
+  }
+
+  .dashboard-secondary-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .dashboard-secondary-grid>.ui-card:first-child {
+    grid-column: 1/-1
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr)
+  }
+
+  .risk-cards {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .feature-cards {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .journey-ribbon {
+    grid-template-columns: repeat(3, 1fr);
+    margin: -20px 20px 0
+  }
+
+  .journey-ribbon>div:nth-child(3) {
+    border-right: 0
+  }
+
+  .process-timeline {
+    grid-template-columns: repeat(2, 1fr)
+  }
+}
+
+@media(max-width:980px) {
+  .app-workspace {
+    grid-template-columns: 1fr
+  }
+
+  .app-sidebar {
+    position: fixed;
+    left: -280px;
+    width: 260px;
+    transition: .25s;
+    box-shadow: var(--shadow-lg)
+  }
+
+  .app-sidebar.open {
+    left: 0
+  }
+
+  .side-brand button,
+  .mobile-nav {
+    display: grid
+  }
+
+  .app-topbar {
+    padding: 0 15px
+  }
+
+  .top-search {
+    display: none
+  }
+
+  .dashboard-main-grid,
+  .ai-workbench,
+  .scan-layout,
+  .farm-map-layout,
+  .cart-layout {
+    grid-template-columns: 1fr
+  }
+
+  .app-content {
+    padding: 18px 15px 50px
+  }
+
+  .auth-experience {
+    grid-template-columns: 1fr
+  }
+
+  .auth-scene {
+    display: none
+  }
+
+  .onboarding-shell {
+    grid-template-columns: 260px 1fr
+  }
+
+  .onboarding-side {
+    padding: 30px 22px
+  }
+
+  .onboarding-main {
+    padding: 25px
+  }
+
+  .product-grid,
+  .farm-card-grid,
+  .project-grid,
+  .supplier-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .welcome-hero {
+    grid-template-columns: 1fr;
+    padding-top: 45px
+  }
+
+  .welcome-visual {
+    min-height: 450px
+  }
+
+  .sdg-big-grid {
+    grid-template-columns: 1fr
+  }
+
+  .partner-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .national-map-grid {
+    grid-template-columns: 1fr
+  }
+
+  .province-side {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px
+  }
+
+  .province-side>.ui-status,
+  .province-side>h2,
+  .province-side>p,
+  .province-side>.ui-btn {
+    grid-column: 1/-1
+  }
+
+  .risk-mini-list {
+    grid-column: 1/-1;
+    grid-template-columns: 1fr 1fr
+  }
+
+  .threshold-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .field-grid.three {
+    grid-template-columns: 1fr 1fr
+  }
+}
+
+@media(max-width:700px) {
+  .public-header {
+    height: 66px;
+    padding: 0 16px
+  }
+
+  .public-header nav {
+    position: absolute;
+    left: 15px;
+    right: 15px;
+    top: 70px;
+    display: none;
+    padding: 12px;
+    border: 1px solid #dfe7e1;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: var(--shadow-md)
+  }
+
+  .public-header nav.open {
+    display: grid
+  }
+
+  .public-actions {
+    display: none
+  }
+
+  .public-menu {
+    display: block
+  }
+
+  .welcome-hero {
+    padding: 45px 18px 65px
+  }
+
+  .welcome-copy h1 {
+    font-size: 42px
+  }
+
+  .welcome-actions {
+    display: grid
+  }
+
+  .hero-proof {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .welcome-visual {
+    min-height: 400px
+  }
+
+  .hero-glass.map {
+    inset: 0
+  }
+
+  .hero-float.agent {
+    left: 0
+  }
+
+  .hero-float.weather {
+    right: 0
+  }
+
+  .journey-ribbon {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .journey-ribbon>div:nth-child(2n) {
+    border-right: 0
+  }
+
+  .welcome-cards,
+  .public-content {
+    padding: 65px 18px
+  }
+
+  .feature-cards,
+  .public-grid3,
+  .process-timeline,
+  .partner-grid {
+    grid-template-columns: 1fr
+  }
+
+  .public-hero-small h1 {
+    font-size: 32px
+  }
+
+  .welcome-cta {
+    margin: 0 18px 65px;
+    display: grid
+  }
+
+  .public-footer {
+    display: grid;
+    padding: 25px 18px
+  }
+
+  .public-footer p {
+    text-align: left
+  }
+
+  .onboarding-shell {
+    grid-template-columns: 1fr
+  }
+
+  .onboarding-side {
+    position: relative;
+    height: auto
+  }
+
+  .onboarding-side>span,
+  .onboarding-side h1,
+  .onboarding-side>p {
+    display: none
+  }
+
+  .onboarding-steps {
+    grid-template-columns: repeat(6, 1fr);
+    margin-top: 20px
+  }
+
+  .onboarding-steps>div {
+    display: grid;
+    justify-items: center;
+    padding: 3px
+  }
+
+  .onboarding-steps span {
+    display: none
+  }
+
+  .onboarding-main {
+    padding: 18px
+  }
+
+  .onboard-card {
+    margin: 25px auto 0;
+    padding: 22px
+  }
+
+  .crop-picker {
+    grid-template-columns: repeat(2, 1fr)
+  }
+
+  .choice-grid,
+  .language-cards {
+    grid-template-columns: 1fr
+  }
+
+  .field-grid,
+  .field-grid.three {
+    grid-template-columns: 1fr
+  }
+
+  .dashboard-metrics {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .dashboard-main-grid,
+  .dashboard-secondary-grid,
+  .two-col,
+  .three-col,
+  .settings-grid {
+    grid-template-columns: 1fr
+  }
+
+  .dashboard-secondary-grid>.ui-card:first-child {
+    grid-column: auto
+  }
+
+  .innovation-strip {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .top-actions>button:not(.bell):not(.profile-chip) {
+    display: none
+  }
+
+  .profile-chip div {
+    display: none
+  }
+
+  .page-intro,
+  .command-hero,
+  .twin-header {
+    align-items: flex-start;
+    flex-direction: column
+  }
+
+  .command-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr
+  }
+
+  .risk-cards,
+  .risk-level-grid {
+    grid-template-columns: 1fr
+  }
+
+  .forecast-grid {
+    grid-template-columns: repeat(14, 72px)
+  }
+
+  .sentinel-steps {
+    grid-template-columns: 1fr 1fr 1fr
+  }
+
+  .image-slot-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .farm-card-grid,
+  .project-grid,
+  .product-grid,
+  .supplier-grid {
+    grid-template-columns: 1fr
+  }
+
+  .task-table>div {
+    grid-template-columns: 5px 1fr auto
+  }
+
+  .task-due {
+    grid-column: 2
+  }
+
+  .task-actions {
+    grid-column: 2/-1;
+    justify-content: flex-start
+  }
+
+  .lifecycle-track {
+    overflow-x: auto;
+    grid-template-columns: repeat(7, 90px)
+  }
+
+  .sdg-report-grid {
+    grid-template-columns: 1fr
+  }
+
+  .expert-queue-list>div {
+    grid-template-columns: 1fr
+  }
+
+  .threshold-grid {
+    grid-template-columns: 1fr
+  }
+
+  .cart-list>div {
+    grid-template-columns: 30px 1fr auto
+  }
+
+  .cart-list .qty {
+    grid-column: 2
+  }
+
+  .cart-list>strong {
+    grid-column: 3;
+    grid-row: 1
+  }
+
+  .cart-list .remove {
+    grid-column: 3;
+    grid-row: 2
+  }
+
+  .role-cards {
+    grid-template-columns: 1fr
+  }
+
+  .journey-progress span {
+    display: none
+  }
+}
+
+@media(max-width:430px) {
+  .dashboard-metrics {
+    grid-template-columns: 1fr
+  }
+
+  .innovation-strip {
+    grid-template-columns: 1fr
+  }
+
+  .onboarding-steps {
+    grid-template-columns: repeat(3, 1fr)
+  }
+
+  .public-logo small {
+    display: none
+  }
+
+  .welcome-copy h1 {
+    font-size: 36px
+  }
+
+  .hero-proof {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .journey-ribbon {
+    grid-template-columns: 1fr
+  }
+
+  .journey-ribbon>div {
+    border-right: 0
+  }
+
+  .sentinel-steps {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .risk-mini-list {
+    grid-template-columns: 1fr
+  }
+
+  .decision-lists {
+    grid-template-columns: 1fr
+  }
+
+  .ai-context-strip small {
+    display: none
+  }
+
+  .ai-composer {
+    grid-template-columns: 32px 1fr 32px 38px
+  }
+}
+

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "npx --yes prettier@3 --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "npx --yes prettier@3 --check \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
