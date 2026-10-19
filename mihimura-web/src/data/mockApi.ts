@@ -10,12 +10,29 @@ export interface ProvinceData {
   trend: number;
   activeAlerts: number;
   rainfall7d: number;
-  rainfallAvgDiff: number;
+  /** % difference from the 30-year average for this time of year; null when unknown. */
+  rainfallAvgDiff: number | null;
   cropCoverage: number;
   atRiskArea: number;
-  soilMoisture: number;
+  /** Topsoil moisture %; null when unknown. */
+  soilMoisture: number | null;
   topCrop: string;
   nextAction: string;
+  waterStress?: number | null;
+  heatStress?: number | null;
+  alerts?: string[];
+  rainfallNext3d?: number | null;
+  rainProbabilityNext3d?: number | null;
+}
+
+/** Province indices for the maps, as returned by GET /situation/provinces. */
+export interface ProvinceSituation {
+  live: boolean;
+  generatedAt: string;
+  source: string;
+  method?: string;
+  reason?: string;
+  provinces: Record<string, ProvinceData>;
 }
 
 export interface PriorityAction {

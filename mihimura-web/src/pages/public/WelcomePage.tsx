@@ -16,9 +16,18 @@ import {
 import { Link } from 'react-router-dom';
 import { Button, Status } from '../../components/common/UI';
 import { SriLankaProvinceMap } from '../../components/dashboard/SriLankaProvinceMap';
-import { provinceData } from '../../data/mockApi';
+import { situationLabel, useProvinceSituation } from '../../hooks/useProvinceSituation';
 
 export function WelcomePage() {
+  const situation = useProvinceSituation();
+  const provinces = Object.values(situation.provinces);
+  // Highlight the province with the lowest crop condition and the wettest outlook.
+  const focus = provinces.reduce((a, b) => (b.healthScore < a.healthScore ? b : a), provinces[0]);
+  const wettest = provinces.reduce(
+    (a, b) => ((b.rainProbabilityNext3d ?? 0) > (a.rainProbabilityNext3d ?? 0) ? b : a),
+    provinces[0],
+  );
+  const needsAction = focus && focus.healthScore < 60;
   return (
     <main className="welcome-page">
       <section className="welcome-hero">
@@ -66,28 +75,31 @@ export function WelcomePage() {
               <span>
                 <Globe2 /> Live national pulse
               </span>
-              <Status tone="orange">Action</Status>
+              <Status tone={!situation.live ? 'amber' : needsAction ? 'orange' : 'green'}>
+                {!situation.live ? 'Baseline' : needsAction ? 'Action' : 'Stable'}
+              </Status>
             </div>
             <SriLankaProvinceMap
-              selectedProvince="Eastern"
+              selectedProvince={focus?.name || 'Eastern'}
               activeLayer="cropHealth"
-              provinces={provinceData}
+              provinces={situation.provinces}
               onSelectProvince={() => {}}
+              sourceNote={situationLabel(situation)}
             />
           </div>
           <div className="hero-float agent">
             <Bot />
             <div>
-              <small>Safety agent</small>
-              <b>Fertilizer timing paused</b>
-              <p>Rain risk crossed the operating threshold.</p>
+              <small>Safety agent · {focus?.name}</small>
+              <b>{focus?.nextAction || 'Routine monitoring'}</b>
+              <p>Crop condition index {focus?.healthScore ?? '—'}/100.</p>
             </div>
           </div>
           <div className="hero-float weather">
             <CloudSun />
             <div>
-              <b>82%</b>
-              <span>rain probability</span>
+              <b>{situation.live ? `${wettest?.rainProbabilityNext3d ?? 0}%` : '—'}</b>
+              <span>rain chance · {wettest?.name}</span>
             </div>
           </div>
         </div>

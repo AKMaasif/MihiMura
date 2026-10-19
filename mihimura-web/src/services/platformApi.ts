@@ -1,3 +1,4 @@
+import type { ProvinceSituation } from '../data/mockApi';
 import { supabase, supabaseConfigured } from './supabase';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
@@ -112,6 +113,7 @@ export const platformApi = {
   dashboard: () => request('/dashboard'),
   weather: (lat = 7.291, lon = 81.674, days = 14) => request(`/weather?lat=${lat}&lon=${lon}&days=${days}`),
   climateHistory: (lat = 7.291, lon = 81.674) => request(`/climate-history?lat=${lat}&lon=${lon}`),
+  situation: () => request<ProvinceSituation>('/situation/provinces'),
   satellite: (lat = 7.291, lon = 81.674) => request(`/satellite/catalog?lat=${lat}&lon=${lon}`),
 
   farms: () => request('/farms'),

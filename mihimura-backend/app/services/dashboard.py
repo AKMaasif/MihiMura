@@ -1,44 +1,141 @@
+"""National dashboard built from the live province situation."""
+
 from __future__ import annotations
+
 from datetime import datetime, timezone
-from app.services.platform import list_tasks,list_projects
+from typing import Any
 
-PROVINCES={
-"Western":{"id":"WP","healthScore":82,"trend":4,"rainfallRisk":32,"pestRisk":24,"activeAlerts":1,"atRiskArea":24,"rainfall7d":112,"rainfallAvgDiff":5,"cropCoverage":45,"soilMoisture":44,"topCrop":"Coconut","nextAction":"Routine monitoring"},
-"Central":{"id":"CP","healthScore":76,"trend":2,"rainfallRisk":48,"pestRisk":31,"activeAlerts":2,"atRiskArea":39,"rainfall7d":96,"rainfallAvgDiff":8,"cropCoverage":60,"soilMoisture":41,"topCrop":"Tea","nextAction":"Watch slope runoff"},
-"Southern":{"id":"SP","healthScore":55,"trend":-2,"rainfallRisk":57,"pestRisk":46,"activeAlerts":3,"atRiskArea":74,"rainfall7d":83,"rainfallAvgDiff":-5,"cropCoverage":50,"soilMoisture":35,"topCrop":"Cinnamon","nextAction":"Inspect stressed blocks"},
-"Northern":{"id":"NP","healthScore":74,"trend":1,"rainfallRisk":28,"pestRisk":42,"activeAlerts":2,"atRiskArea":48,"rainfall7d":31,"rainfallAvgDiff":-10,"cropCoverage":55,"soilMoisture":29,"topCrop":"Onion","nextAction":"Monitor water budget"},
-"Eastern":{"id":"EP","healthScore":48,"trend":-6,"rainfallRisk":76,"pestRisk":69,"activeAlerts":5,"atRiskArea":124,"rainfall7d":68,"rainfallAvgDiff":-12,"cropCoverage":71,"soilMoisture":22,"topCrop":"Paddy","nextAction":"Delay exposed operations"},
-"North Western":{"id":"NW","healthScore":44,"trend":-5,"rainfallRisk":41,"pestRisk":58,"activeAlerts":5,"atRiskArea":92,"rainfall7d":47,"rainfallAvgDiff":-18,"cropCoverage":65,"soilMoisture":27,"topCrop":"Coconut","nextAction":"Scout pest hotspots"},
-"North Central":{"id":"NC","healthScore":58,"trend":-3,"rainfallRisk":23,"pestRisk":47,"activeAlerts":4,"atRiskArea":88,"rainfall7d":29,"rainfallAvgDiff":-25,"cropCoverage":80,"soilMoisture":24,"topCrop":"Paddy","nextAction":"Review irrigation windows"},
-"Uva":{"id":"UP","healthScore":42,"trend":-4,"rainfallRisk":62,"pestRisk":71,"activeAlerts":6,"atRiskArea":83,"rainfall7d":74,"rainfallAvgDiff":-9,"cropCoverage":55,"soilMoisture":31,"topCrop":"Tea","nextAction":"Prioritize pest inspection"},
-"Sabaragamuwa":{"id":"SG","healthScore":64,"trend":-1,"rainfallRisk":54,"pestRisk":38,"activeAlerts":2,"atRiskArea":53,"rainfall7d":105,"rainfallAvgDiff":4,"cropCoverage":65,"soilMoisture":39,"topCrop":"Rubber","nextAction":"Watch rainfall anomaly"}}
+from app.services.platform import list_projects, list_tasks
+from app.services.situation import LITRES_PER_MM_ACRE, get_province_situation
+
+ALERT_LABELS = {
+    "heavy_rain": "heavy rain expected",
+    "strong_wind": "strong wind expected",
+    "heat": "high temperature expected",
+    "dry_soil": "dry topsoil",
+    "pest_pressure": "high pest/disease pressure",
+}
 
 
-def get_dashboard_payload(uid:str):
+def _severity(province: dict[str, Any]) -> str:
+    worst = max(province["rainfallRisk"], province["pestRisk"], 100 - province["healthScore"])
+    return "Critical" if worst >= 75 else "High" if worst >= 55 else "Medium"
+
+
+def _priority_actions(provinces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ranked = sorted(provinces, key=lambda p: (p["healthScore"], -p["activeAlerts"]))
+    actions = []
+    for index, p in enumerate(ranked[:3]):
+        alerts = ", ".join(ALERT_LABELS.get(a, a) for a in p["alerts"]) or "no active weather alert"
+        evidence = f"Rainfall risk {p['rainfallRisk']}/100 · pest pressure {p['pestRisk']}/100"
+        if p.get("soilMoisture") is not None:
+            evidence += f" · topsoil moisture {p['soilMoisture']}%"
+        actions.append({
+            "id": f"a{index + 1}",
+            "severity": _severity(p),
+            "title": p["nextAction"],
+            "province": p["name"],
+            "deadline": "Within 24h" if _severity(p) == "Critical" else "Within 48h",
+            "description": f"Crop condition index {p['healthScore']}/100 ({alerts}).",
+            "reason": f"Lowest crop condition indices nationally ({alerts}).",
+            "evidence": evidence,
+            "impact": "Reduce avoidable crop loss",
+            "buttonText": "Review action",
+        })
+    return actions
+
+
+def _changes(provinces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    changes = []
+    worsening = sorted((p for p in provinces if p["trend"] < 0), key=lambda p: p["trend"])
+    improving = sorted((p for p in provinces if p["trend"] > 0), key=lambda p: -p["trend"])
+    for p in worsening[:2]:
+        changes.append({
+            "id": f"w-{p['id']}", "tone": "danger" if p["trend"] <= -8 else "warning",
+            "title": f"{p['name']} conditions worsening ({p['trend']} pts)",
+            "detail": f"The coming days look worse than the past week: {p['nextAction'].lower()}.",
+            "province": p["name"],
+        })
+    for p in improving[:1]:
+        changes.append({
+            "id": f"i-{p['id']}", "tone": "positive",
+            "title": f"{p['name']} conditions improving (+{p['trend']} pts)",
+            "detail": "Forecast conditions are better than the past week.",
+            "province": p["name"],
+        })
+    for p in provinces:
+        if "heavy_rain" in p["alerts"]:
+            changes.append({
+                "id": f"r-{p['id']}", "tone": "warning", "title": f"Heavy rain expected in {p['name']}",
+                "detail": f"About {p['rainfallNext3d']} mm forecast over the next 3 days.", "province": p["name"],
+            })
+    return changes[:4]
+
+
+def _ago(iso: str) -> str:
+    try:
+        seconds = (datetime.now(timezone.utc) - datetime.fromisoformat(str(iso).replace("Z", "+00:00"))).total_seconds()
+    except ValueError:
+        return ""
+    if seconds < 3600:
+        return f"{max(1, int(seconds // 60))}m ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h ago"
+    return f"{int(seconds // 86400)}d ago"
+
+
+def _agent_activity(uid: str) -> list[dict[str, Any]]:
+    """The user's own most recent agent runs (real activity, not sample text)."""
+    try:
+        from app.services.platform import _many, _sort
+
+        runs = _sort(_many("agent_runs", owner_uid=uid))[:4]
+    except Exception:
+        return []
+    out = []
+    for run in runs:
+        output = run.get("output") or {}
+        mode = str(output.get("effective_mode") or "assistant").replace("_", " ").title()
+        out.append({
+            "id": str(run.get("id")),
+            "agent": mode,
+            "action": str(run.get("request") or "")[:90],
+            "time": _ago(str(run.get("created_at") or "")),
+            "status": "complete",
+        })
+    return out
+
+
+def get_dashboard_payload(uid: str) -> dict[str, Any]:
+    situation = get_province_situation()
+    provinces = list(situation["provinces"].values())
+    acres = sum(p["atRiskArea"] for p in provinces)
+    health = round(sum(p["healthScore"] for p in provinces) / len(provinces))
+    water = [p["waterStress"] for p in provinces if p.get("waterStress") is not None]
+    irrigation_litres = sum(
+        (p.get("irrigationDeficitMmPerDay") or 0) * p["atRiskArea"] * LITRES_PER_MM_ACRE for p in provinces
+    )
     return {
-        "generatedAt":datetime.now(timezone.utc).isoformat(),
-        "source":"MihiMura demo national snapshot",
-        "reportingPeriod":"Demo baseline · replace with scheduled DCS/DoA ingestion",
-        "confidence":"Demonstration data — not an official live statistic",
-        "summary":{"cropHealth":64,"cropHealthChange":2.4,"atRiskArea":625,"newlyAtRiskArea":18,"waterDeficit":18,"irrigationNeed":36400,"activeThreats":17,"criticalThreats":2,"yieldProtected":14.8,"yieldProtectedChange":1.7},
-        "provinces":{k:{"name":k,**v} for k,v in PROVINCES.items()},
-        "priorityActions":[
-            {"id":"a1","severity":"Critical","title":"Delay fertilizer timing","province":"Eastern","deadline":"Before 08:00","description":"Rain probability and runoff exposure are elevated across exposed paddy blocks.","reason":"Rain probability and runoff exposure are elevated.","evidence":"76/100 rainfall risk · drainage context · current forecast","impact":"Reduce avoidable nutrient runoff","buttonText":"Review action"},
-            {"id":"a2","severity":"High","title":"Inspect chilli pest cluster","province":"Uva / Eastern","deadline":"Due today","description":"Climate conditions and privacy-threshold community reports indicate increasing pest pressure.","reason":"Climate conditions and reports increase pest pressure.","evidence":"Community reports + humidity + pest-risk layer","impact":"Earlier field verification","buttonText":"Assign scout"},
-            {"id":"a3","severity":"High","title":"Prepare irrigation window","province":"North Central","deadline":"Within 48h","description":"The water budget is declining while forecast rainfall remains below crop-stage demand.","reason":"Water budget is declining while rainfall is below crop-stage demand.","evidence":"24% soil-moisture proxy · rainfall deficit · field context","impact":"Reduce water stress","buttonText":"Schedule"}
-        ],
-        "changes":[
-            {"id":"c1","tone":"danger","title":"18 acres moved into higher risk","detail":"Most of the change occurred in Eastern and North Western provinces.","province":"National"},
-            {"id":"c2","tone":"warning","title":"Rain probability increased","detail":"Eastern Province now has the highest rainfall-risk score in the demonstration layer.","province":"Eastern"},
-            {"id":"c3","tone":"positive","title":"Moisture recovered after irrigation","detail":"A monitored Western Province block returned toward the target range.","province":"Western"},
-            {"id":"c4","tone":"info","title":"Community pest threshold reached","detail":"An anonymized Ampara chilli cluster crossed the publication threshold.","province":"Eastern"}
-        ],
-        "agentActivity":[
-            {"id":"g1","agent":"Satellite Perception","action":"Updated vegetation condition proxy","time":"2m ago","status":"complete"},
-            {"id":"g2","agent":"Micro-Climate","action":"Re-ranked rainfall risk for Ampara","time":"3m ago","status":"complete"},
-            {"id":"g3","agent":"Community Sentinel","action":"Cluster threshold reached for pest watch","time":"6m ago","status":"working"},
-            {"id":"g4","agent":"Intervention & Safety","action":"Blocked risky fertilizer timing","time":"7m ago","status":"complete"}
-        ],
-        "taskCount":len(list_tasks(uid)),
-        "projectCount":len(list_projects(uid)),
+        "generatedAt": situation["generatedAt"],
+        "source": situation["source"],
+        "live": situation["live"],
+        "reportingPeriod": "Past 7 days and next 3 days" if situation["live"] else "Baseline reference",
+        "confidence": situation.get("method") or "Baseline values — live weather unavailable",
+        "summary": {
+            "cropHealth": health,
+            "cropHealthChange": round(sum(p["trend"] for p in provinces) / len(provinces), 1),
+            "atRiskArea": acres,
+            "newlyAtRiskArea": sum(round(p["atRiskArea"] * max(0, -p["trend"]) / 100) for p in provinces),
+            "waterDeficit": round(sum(water) / len(water)) if water else 0,
+            "irrigationNeed": round(irrigation_litres),
+            "activeThreats": sum(p["activeAlerts"] for p in provinces),
+            "criticalThreats": sum(1 for p in provinces if _severity(p) == "Critical"),
+            "provincesNeedingAction": sum(1 for p in provinces if p["healthScore"] < 60),
+        },
+        "provinces": situation["provinces"],
+        "priorityActions": _priority_actions(provinces),
+        "changes": _changes(provinces),
+        "agentActivity": _agent_activity(uid),
+        "taskCount": len(list_tasks(uid)),
+        "projectCount": len(list_projects(uid)),
     }

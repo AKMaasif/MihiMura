@@ -121,6 +121,28 @@ def fallback_decision(
     return enforce(out, safety)
 
 
+def regional_situation(context: dict[str, Any]) -> dict[str, Any]:
+    """Live province indices for the user's district (same data as the maps)."""
+    from app.services.situation import PROVINCES, get_province_situation
+
+    district = str(context.get("district") or context.get("location") or "")
+    province = next((name for name, info in PROVINCES.items() if district in info["districts"]), None)
+    if not province:
+        return {"status": "not_available", "reason": "district not resolved"}
+    try:
+        situation = get_province_situation()
+    except Exception as exc:
+        return {"status": "unavailable", "reason": str(exc)}
+    entry = situation["provinces"].get(province, {})
+    return {
+        "status": "live" if situation.get("live") else "baseline_not_current",
+        "province": province,
+        "source": situation.get("source"),
+        "generated_at": situation.get("generatedAt"),
+        "indices": {k: entry.get(k) for k in ("healthScore", "rainfallRisk", "pestRisk", "waterStress", "alerts", "nextAction")},
+    }
+
+
 def _model_payload(turn: Turn, evidence: Evidence, plan_detail: dict[str, Any], quality: dict[str, Any], safety: dict[str, Any]) -> dict[str, Any]:
     plan = plan_detail.get("tools") or {}
 
@@ -143,6 +165,7 @@ def _model_payload(turn: Turn, evidence: Evidence, plan_detail: dict[str, Any], 
         "market": evidence.market,
         "economics": evidence.economics,
         "resource_plan": evidence.resources,
+        "regional_situation": regional_situation(turn.context),
         "evidence_quality": quality,
         "safety": safety,
     }

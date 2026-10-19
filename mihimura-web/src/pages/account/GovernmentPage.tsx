@@ -57,9 +57,9 @@ export function GovernmentPage() {
           tone="blue"
         />
         <Metric
-          label="Yield protected"
-          value={dashboard?.summary ? `${dashboard.summary.yieldProtected} t` : '—'}
-          note="demo intervention estimate"
+          label="Provinces needing action"
+          value={dashboard?.summary ? `${dashboard.summary.provincesNeedingAction ?? 0} / 9` : '—'}
+          note={dashboard?.live ? 'live crop condition index below 60' : 'baseline values'}
           icon={Stethoscope}
           tone="purple"
         />

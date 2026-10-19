@@ -60,6 +60,7 @@ from app.services.knowledge_base import (
     update_knowledge_document,
 )
 from app.services.satellite import catalog_search, configured as satellite_configured
+from app.services.situation import get_province_situation
 from app.services.voice import create_voice_session_token, synthesize_voice
 from app.services.weather import get_weather
 from app.supabase_client import supabase_configured
@@ -269,6 +270,12 @@ def weather(lat: float = Latitude, lon: float = Longitude, days: int = Query(14,
 @router.get("/climate-history")
 def climate_history(lat: float = Latitude, lon: float = Longitude, days: int = Query(30, ge=1, le=365)):
     return get_nasa_power(lat, lon, days)
+
+
+@router.get("/situation/provinces")
+def province_situation():
+    """Live province risk indices for the maps (public, cached for 30 minutes)."""
+    return get_province_situation()
 
 
 @router.get("/satellite/catalog")
