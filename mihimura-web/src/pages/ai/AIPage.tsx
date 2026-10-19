@@ -34,6 +34,31 @@ import {
   thinkingCopy,
 } from './chatHelpers';
 
+type RiskLevel = 'low' | 'watch' | 'action' | 'emergency';
+
+const RISK_LABELS: Record<RiskLevel, string> = {
+  low: 'Low risk',
+  watch: 'Watch',
+  action: 'Act now',
+  emergency: 'Emergency',
+};
+
+const TRACE_TONES: Record<string, 'green' | 'amber' | 'red' | 'gray'> = {
+  complete: 'green',
+  success: 'green',
+  watch: 'amber',
+  error: 'red',
+  failed: 'red',
+};
+
+const TRACE_LABELS: Record<string, string> = {
+  complete: 'Done',
+  success: 'Done',
+  watch: 'Check',
+  error: 'Failed',
+  failed: 'Failed',
+};
+
 export function AIPage() {
   const nav = useNavigate();
   const { profile } = useAuth();
@@ -487,10 +512,14 @@ export function AIPage() {
 
   const currentReport = report || result?.report || latestAssistant?.metadata?.report;
   const effectiveMode: AgentMode = isAgentMode(result?.effective_mode) ? result.effective_mode : mode;
+  const riskLevel: RiskLevel = (['low', 'watch', 'action', 'emergency'] as const).includes(result?.risk_level)
+    ? result.risk_level
+    : 'watch';
+  const confidencePct = Math.round(Math.max(0, Math.min(1, Number(result?.confidence) || 0)) * 100);
   const modeDescription = AGENT_MODES.find((x) => x.id === mode)?.description || AGENT_MODES[0].description;
 
   return (
-    <div className="ai-shell">
+    <div className="ai-shell notebook">
       <aside className="ai-history-panel">
         <div className="ai-history-head">
           <div>
@@ -810,34 +839,22 @@ export function AIPage() {
             >
               {result ? (
                 <div className="decision-result">
-                  <div className="decision-risk">
-                    <Status
-                      tone={
-                        result.risk_level === 'emergency'
-                          ? 'red'
-                          : result.risk_level === 'action'
-                            ? 'orange'
-                            : result.risk_level === 'low'
-                              ? 'green'
-                              : 'amber'
-                      }
-                    >
-                      {result.risk_level || 'watch'}
-                    </Status>
-                    <span>
-                      Confidence <b>{Math.round((result.confidence || 0) * 100)}%</b>
-                    </span>
-                    {result?.evidence_quality?.level && (
+                  <div className="decision-head">
+                    <span className={`risk-stamp risk-${riskLevel}`}>{RISK_LABELS[riskLevel]}</span>
+                    <div className="confidence">
                       <span>
-                        Evidence <b>{String(result.evidence_quality.level)}</b>
+                        Confidence <b>{confidencePct}%</b>
+                        {result?.evidence_quality?.level && (
+                          <> · evidence {String(result.evidence_quality.level)}</>
+                        )}
                       </span>
-                    )}
-                    <span>
-                      Provider <b>{result.provider || 'policy engine'}</b>
-                    </span>
+                      <div className="confidence-meter" aria-hidden="true">
+                        <i style={{ width: `${confidencePct}%` }} />
+                      </div>
+                    </div>
                   </div>
                   <section>
-                    <small>Recommended action</small>
+                    <small>What to do</small>
                     <h3>{result.recommended_action || result.summary}</h3>
                   </section>
                   <section>
@@ -845,7 +862,7 @@ export function AIPage() {
                     <p>{result.why || 'Continue the conversation to build a grounded decision.'}</p>
                   </section>
                   <details open>
-                    <summary>Evidence / source freshness</summary>
+                    <summary>Sources used ({(result.sources || []).length})</summary>
                     <div className="source-evidence-list">
                       {(result.sources || []).length ? (
                         (result.sources || []).map((x: any, i: number) => (
@@ -872,10 +889,10 @@ export function AIPage() {
                     </div>
                   </details>
                   <details>
-                    <summary>Alternatives & “do not do”</summary>
+                    <summary>Other options and what to avoid</summary>
                     <div className="decision-lists">
                       <div>
-                        <b>Alternatives</b>
+                        <b>Other options</b>
                         {(result.alternatives || []).map((x: string) => (
                           <span key={x}>
                             <CheckCircle2 />
@@ -884,7 +901,7 @@ export function AIPage() {
                         ))}
                       </div>
                       <div>
-                        <b>Do not do</b>
+                        <b>Avoid</b>
                         {(result.do_not_do || []).map((x: string) => (
                           <span key={x}>
                             <AlertTriangle />
@@ -903,7 +920,7 @@ export function AIPage() {
                     </div>
                   </div>
                   <section>
-                    <small>Follow-up</small>
+                    <small>Next</small>
                     <p>{result.follow_up || 'Continue in this same conversation.'}</p>
                   </section>
                   {result.confirmation_required && (
@@ -958,22 +975,31 @@ export function AIPage() {
                 />
               )}
             </Card>
-            <Card
-              title="Agent trace"
-              subtitle="Visible coordination makes the workflow testable and auditable"
-            >
+            <Card title="How this answer was made" subtitle="Each agent and tool that ran, in order">
               {result ? (
-                <div className="agent-trace-list">
-                  {(result.agent_trace || []).map((x: any, i: number) => (
-                    <div key={i}>
-                      <i>{i + 1}</i>
-                      <span>
-                        <b>{typeof x === 'string' ? 'Agent' : x.agent}</b>
-                        <p>{typeof x === 'string' ? x : x.action}</p>
-                      </span>
-                      <Status tone="green">{typeof x === 'string' ? 'done' : x.status}</Status>
-                    </div>
-                  ))}
+                <div className="field-log">
+                  <ol className="agent-trace-list">
+                    {(result.agent_trace || []).map((x: any, i: number) => {
+                      const status = typeof x === 'string' ? 'complete' : String(x.status || 'complete');
+                      return (
+                        <li key={i} data-status={status}>
+                          <span>
+                            <b>{typeof x === 'string' ? 'Agent' : x.agent}</b>
+                            <p>{typeof x === 'string' ? x : x.action}</p>
+                          </span>
+                          <Status tone={TRACE_TONES[status] || 'gray'}>
+                            {TRACE_LABELS[status] || status}
+                          </Status>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <p className="field-log-footer">
+                    {result.model
+                      ? `Answered by ${result.model}`
+                      : `Answered by ${result.provider || 'policy engine'}`}
+                    {result.latency_ms ? ` in ${(Number(result.latency_ms) / 1000).toFixed(1)} s` : ''}
+                  </p>
                 </div>
               ) : (
                 <div className="agent-placeholder">
