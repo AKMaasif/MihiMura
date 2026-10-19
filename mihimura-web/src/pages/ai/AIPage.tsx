@@ -769,6 +769,7 @@ export function AIPage() {
               </button>
               <textarea
                 value={q}
+                maxLength={4000}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {

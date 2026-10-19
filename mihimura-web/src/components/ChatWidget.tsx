@@ -130,6 +130,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
             type="text"
             placeholder="Ask about crops, weather or actions..."
             value={inputValue}
+            maxLength={4000}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setInputValue(event.target.value)}
             onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
               if (event.key === 'Enter') void handleSend();
