@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.agents.orchestrator import _decision_tool_plan
+from app.agents.workflows.decision import select_tools as _decision_tool_plan
 from app.agents.router import route_request
 
 

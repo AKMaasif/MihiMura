@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.agents.orchestrator import _simple_chat_should_retrieve
+from app.agents.workflows.chat import should_retrieve as _simple_chat_should_retrieve
 from app.agents.router import route_request
 
 

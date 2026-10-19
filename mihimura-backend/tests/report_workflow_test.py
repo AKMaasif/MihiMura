@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.agents.orchestrator import _full_report_response
+from app.agents.workflows.report import full_report_response as _full_report_response
 from app.agents.router import RouteDecision
 
 

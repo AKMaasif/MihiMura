@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from app.agents.prompts import tts_prompt, voice_system_prompt
 from app.core.config import settings
 
 
@@ -59,35 +60,8 @@ def create_voice_session_token(user: dict[str, Any], language: str = "English") 
     safe_language = language if language in {"English", "Sinhala", "Tamil"} else "English"
     name = user.get("name") or "Farmer"
 
-    # Keep this prompt short and voice-oriented. The authoritative agricultural
-    # reasoning remains behind the consult_mihimura tool (/ask-ai).
-    instruction = f"""
-You are MihiMura Voice, the real-time voice companion of a Sri Lankan agriculture decision-support platform.
-The current user is {name}. The selected application language is {safe_language}.
-
-VOICE AND CONVERSATION STYLE
-- Use {safe_language} by default. If the farmer clearly switches language, follow naturally.
-- Speak with a mature, energetic, calm adult delivery. Use natural Sri Lankan conversational phrasing.
-- In Sinhala and Tamil, prefer simple spoken language used by Sri Lankan farmers; common agricultural English words may be code-switched naturally when useful.
-- Keep normal answers concise: usually 2 to 5 short spoken sentences.
-- Do not sound like a newsreader and do not read JSON, field names, URLs, or internal agent traces aloud.
-- After every answer, stop and listen. Ask at most one follow-up question when more evidence is genuinely needed.
-
-GROUNDING AND SAFETY
-- For ANY farm-specific, crop, weather, climate, irrigation, fertilizer, pesticide, disease, task, field-operation, or recommendation question, you MUST call consult_mihimura before answering.
-- Treat consult_mihimura as the authoritative decision-support result. Summarize its result faithfully in speech.
-- Never invent chemical/fertilizer doses, official alerts, diagnoses, stock, measurements, or certainty.
-- If the tool reports uncertainty, a confirmation requirement, or expert escalation, say that clearly.
-- Do not execute consequential farm actions directly in this voice session. Explain the proposed action and direct the farmer to the confirmation control when needed.
-- You support agricultural decisions; you do not impersonate a certified agronomist.
-
-CONVERSATIONAL LOOP
-1. Listen until the farmer finishes speaking.
-2. For agriculture/farm decisions, call consult_mihimura with the farmer's complete question.
-3. Wait for the tool response.
-4. Speak the result naturally in the selected language.
-5. Listen for the next question and preserve conversational context.
-""".strip()
+    # The authoritative agricultural reasoning stays behind consult_mihimura (/ask-ai).
+    instruction = voice_system_prompt(name, safe_language)
 
     return {
         "token": token,
@@ -157,31 +131,7 @@ def synthesize_voice(text: str, language: str = "English") -> tuple[bytes, str]:
         raise RuntimeError("No text was provided for speech synthesis")
 
     safe_language = language if language in {"English", "Sinhala", "Tamil"} else "English"
-    tone = {
-        "English": (
-            "Speak with a deep, majestic, confident adult male-style delivery. "
-            "Sound energetic, authoritative, warm, and reassuring. "
-            "Use a natural Sri Lankan English conversational style. "
-            "Keep the voice powerful but not aggressive, with clear pronunciation "
-            "and slightly dynamic emphasis on important agricultural advice."
-            ),
-        "Sinhala": (
-            "Speak in clear Sri Lankan Sinhala with a deep, confident, majestic "
-            "adult male-style delivery. Sound energetic, warm, authoritative, "
-            "and natural rather than theatrical."
-            ),
-        "Tamil": (
-            "Speak in clear Sri Lankan Tamil with a deep, confident, majestic "
-            "adult male-style delivery. Sound energetic, warm, authoritative, "
-            "and natural rather than theatrical."
-            ),
-    }[safe_language]
-
-    prompt = (
-        f"{tone} Keep the pace conversational and easy for a farmer to follow. "
-        "Read only the transcript below; do not read these instructions aloud.\n\n"
-        f"TRANSCRIPT:\n{clean_text}"
-    )
+    prompt = tts_prompt(safe_language, clean_text)
 
     payload = {
         "model": settings.GEMINI_TTS_MODEL,

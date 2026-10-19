@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import json
 import logging
 import os
 from pathlib import Path
@@ -21,6 +20,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from pydantic import BaseModel, Field
 
 from app.agents.agronomy import retrieve_approved_knowledge
+from app.agents.llm import generate_structured
+from app.agents.prompts import REPORT_SYSTEM_PROMPT, translation_system_prompt
 from app.core.ai import get_gemini_client
 from app.core.config import settings
 from app.db import audit, now_iso
@@ -33,66 +34,6 @@ from app.services.weather import get_weather
 from app.services.language import normalize_language, detect_language
 from app.supabase_client import service_client
 
-REPORT_SYSTEM = """You are MihiMura Report Composer. Create a comprehensive, practical cultivation + farm-business planning report for a Sri Lankan farmer.
-
-The user asked for a FULL REPORT, so do not collapse the result into a short recommendation. Use the supplied evidence, transparent calculations and explicit assumptions.
-
-LANGUAGE
-- TARGET_LANGUAGE will be English, Sinhala or Tamil.
-- Write ALL farmer-facing report content in TARGET_LANGUAGE: title, executive summary, section headings, paragraphs, bullets, table column labels/cells, assumptions, limitations and next actions.
-- Keep exact source names, scientific names, product/active-ingredient names, dates, numbers and units unchanged when translation could reduce precision.
-- Do not switch back to English merely because the evidence bundle uses English machine keys.
-
-SAFETY / TRUTH RULES
-- Never invent live prices, official alerts, laboratory results, pesticide/fertilizer rates, product-label claims or guaranteed yield/profit.
-- Cost/yield/selling-price numbers in economics are configurable planning scenarios, NOT live market quotations. Label them clearly.
-- If a chemical, fertilizer rate, interval or product selection requires an official protocol/label and the supplied evidence does not contain that exact verified instruction, explain what must be verified instead of fabricating it.
-- Separate USER-PROVIDED FACTS, VERIFIED/TOOL DATA, PLANNING ESTIMATES and ASSUMPTIONS.
-- Season, irrigation, variety or planting date may be unknown. Do NOT refuse the report; provide scenario guidance and mark the unknowns for refinement.
-- approved_knowledge may contain hybrid pgvector/FTS RAG excerpts. Use only claims supported by those excerpts, name the authority/document in the relevant section, and preserve page/location labels where available.
-- If approved_knowledge.retrieval is approved_source_registry_fallback, those records are links/pointers only; do not imply that their detailed contents were retrieved or verified in this run.
-- Give higher evidentiary weight to lower authority_tier values (Tier 1 official, Tier 2 university/research, Tier 3 verified industry, Tier 4 general curated).
-
-REPORT COVERAGE
-Include all relevant sections, normally:
-1 Executive summary
-2 Scenario and assumptions
-3 Location / seasonal suitability
-4 Crop and variety decision
-5 Land preparation
-6 Equipment and machinery
-7 Hand tools / PPE
-8 Seed / establishment
-9 Water and irrigation management
-10 Nutrient/fertilizer planning
-11 Weed management
-12 Pest management
-13 Disease monitoring/management
-14 Chemicals / crop-protection decision protocol (verified-only; no invented rates)
-15 Labour plan
-16 Crop-stage calendar and tasks
-17 Weather/climate/disaster risks
-18 Input/resource checklist
-19 Cost breakdown
-20 Yield/revenue/profit scenarios
-21 Break-even analysis
-22 Harvest plan
-23 Post-harvest handling and quality
-24 Storage/transport/logistics
-25 Marketing and buyer channels/platforms
-26 Selling strategy
-27 30/60/90-day actions or stage-based action plan
-28 Main risks and mitigations
-29 Sources/evidence/verification items
-30 Limitations and expert/official checks
-
-OUTPUT REQUIREMENTS
-- The API enforces the response structure with a JSON schema; focus on complete, accurate content rather than restating or explaining the schema.
-- Populate a stable English machine key for every section_key, while keeping every farmer-facing string in TARGET_LANGUAGE.
-- Keep the report comprehensive: normally produce the full coverage above rather than collapsing it to a few sections.
-- For a section without a useful table, return an empty table with empty columns and rows.
-- Keep all financial values consistent with the supplied economics object.
-"""
 
 
 logger = logging.getLogger(__name__)
@@ -515,77 +456,24 @@ def _fallback_report(
     }
 
 
-def _payload_dict(value: Any) -> dict[str, Any]:
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="python")
-    if isinstance(value, dict):
-        return value
-    return {}
-
-
-def _strip_json_fence(text: str) -> str:
-    value = (text or "").strip()
-    if value.startswith("```"):
-        value = value.strip("`").strip()
-        if value.lower().startswith("json"):
-            value = value[4:].strip()
-    return value
-
-
 def _structured_generate(
     client: Any,
-    prompt: str,
+    system: str,
+    payload: dict[str, Any],
     schema: type[BaseModel],
     *,
     max_output_tokens: int = 32768,
     temperature: float = 0.15,
 ) -> dict[str, Any]:
-    """Generate and validate JSON with Gemini structured output.
-
-    The primary path uses response_schema. A JSON-mime fallback is retained for
-    compatibility with a configured model/runtime that rejects response_schema,
-    but Pydantic validation is still mandatory before data enters the report path.
-    """
-    errors: list[str] = []
-
-    try:
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": schema,
-                "temperature": temperature,
-                "max_output_tokens": max_output_tokens,
-            },
-        )
-        parsed = getattr(response, "parsed", None)
-        payload = _payload_dict(parsed)
-        if payload:
-            return payload
-        validated = schema.model_validate_json(_strip_json_fence(response.text or ""))
-        return validated.model_dump(mode="python")
-    except Exception as exc:
-        errors.append(f"schema mode: {exc}")
-
-    # Compatibility fallback: still request JSON and validate against the same
-    # Pydantic model. This avoids the old unvalidated json.loads-only behaviour.
-    try:
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "temperature": temperature,
-                "max_output_tokens": max_output_tokens,
-            },
-        )
-        validated = schema.model_validate_json(_strip_json_fence(response.text or ""))
-        return validated.model_dump(mode="python")
-    except Exception as exc:
-        errors.append(f"json mode: {exc}")
-
-    raise RuntimeError("; ".join(errors))
+    """Schema-validated generation via the shared agent model layer."""
+    return generate_structured(
+        system=system,
+        payload=payload,
+        schema=schema,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        client=client,
+    )
 
 
 def _ensure_section_keys(report: dict[str, Any]) -> dict[str, Any]:
@@ -634,14 +522,10 @@ def _translate_report_meta(client: Any, report: dict[str, Any], target: str) -> 
         "limitations": report.get("limitations") or [],
         "next_actions": report.get("next_actions") or [],
     }
-    prompt = f"""Translate the farmer-facing MihiMura report metadata below into {target}.
-Translate title, executive summary, assumptions, limitations and next actions completely.
-Preserve exact numbers, dates, units, source/authority names, scientific names, active ingredients and product names where translation could reduce precision.
-Do not summarize, omit, add recommendations, or return commentary.
-SOURCE_METADATA: {json.dumps(source, default=str, ensure_ascii=False)}"""
     return _structured_generate(
         client,
-        prompt,
+        translation_system_prompt(target, sections=False),
+        {"source_metadata": source},
         ReportMetaTranslationPayload,
         max_output_tokens=10000,
         temperature=0.05,
@@ -649,16 +533,10 @@ SOURCE_METADATA: {json.dumps(source, default=str, ensure_ascii=False)}"""
 
 
 def _translate_section_batch(client: Any, sections: list[dict[str, Any]], target: str) -> list[dict[str, Any]]:
-    prompt = f"""Translate these MihiMura report sections into {target}.
-Translate every farmer-facing heading, paragraph, bullet, table column label and table cell.
-Keep each section_key exactly unchanged and keep the sections in the same order.
-Preserve exact numbers, dates, units, source/authority names, scientific names, active ingredients and product names where translation could reduce precision.
-Do not summarize, omit rows, merge sections, add commentary, or change the meaning.
-For a source section with no table, return an empty table with empty columns and rows.
-SOURCE_SECTIONS: {json.dumps(sections, default=str, ensure_ascii=False)}"""
     payload = _structured_generate(
         client,
-        prompt,
+        translation_system_prompt(target, sections=True),
+        {"source_sections": sections},
         ReportSectionBatchPayload,
         max_output_tokens=14000,
         temperature=0.05,
@@ -753,10 +631,8 @@ def _report_payload(
     try:
         candidate = _structured_generate(
             client,
-            REPORT_SYSTEM
-            + f"\nTARGET_LANGUAGE: {target_language}"
-            + "\nEVIDENCE: "
-            + json.dumps(evidence, default=str, ensure_ascii=False),
+            REPORT_SYSTEM_PROMPT,
+            {"target_language": target_language, **evidence},
             ReportPayloadSchema,
             max_output_tokens=32768,
             temperature=0.15,
