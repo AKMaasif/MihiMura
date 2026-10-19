@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.agents.contracts import VisionOutput, clamp_confidence
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
 from app.agents.prompts import PROMPT_VERSION, VISION_SYSTEM_PROMPT
-from app.core.config import settings
 from app.services.language import normalize_language
 
 DISCLAIMER = "A phone image alone cannot confirm many crop diseases."
@@ -64,7 +63,8 @@ def analyze_crop_images(images: list[tuple[bytes, str]], crop_hint: str = "", sy
         "language": normalize_language(language),
     }
     try:
-        result = generate_structured(
+        result, model_used = generate_structured_with_model(
+            tier="reasoning",
             system=VISION_SYSTEM_PROMPT,
             payload=payload,
             schema=VisionOutput,
@@ -79,7 +79,7 @@ def analyze_crop_images(images: list[tuple[bytes, str]], crop_hint: str = "", sy
         result["provider_error"] = str(exc)
         return result
     result = _sanitize(result, len(images))
-    result.update({"provider": "gemini", "model": settings.GEMINI_MODEL, "prompt_version": PROMPT_VERSION})
+    result.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
     return result
 
 

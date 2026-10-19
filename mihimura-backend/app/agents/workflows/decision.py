@@ -19,13 +19,12 @@ from typing import Any
 from app.agents import i18n
 from app.agents.contracts import DecisionOutput, finalize_response, step
 from app.agents.evidence_sources import evidence_sources
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
 from app.agents.prompts import DECISION_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
 from app.agents.safety import enforce, precheck, review_rates
 from app.agents.specialists import Evidence, collect_evidence
 from app.agents.turn import Turn
-from app.core.config import settings
 from app.services.evidence_validation import assess_evidence, validate_response_claims
 from app.services.language import detect_language, normalize_language
 from app.services.tool_planner import build_tool_plan
@@ -168,14 +167,15 @@ def run_decision(turn: Turn) -> dict[str, Any]:
 
     provider_error: str | None = None
     try:
-        out = generate_structured(
+        out, model_used = generate_structured_with_model(
+            tier="reasoning",
             system=DECISION_SYSTEM_PROMPT,
             payload=_model_payload(turn, evidence, plan_detail, quality, safety),
             schema=DecisionOutput,
             temperature=0.2,
         )
         out = review_rates(out, evidence.knowledge, safety)
-        out.update({"provider": "gemini", "model": settings.GEMINI_MODEL, "prompt_version": PROMPT_VERSION})
+        out.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
         if not out.get("sources"):
             out["sources"] = evidence_sources(evidence.weather, evidence.climate, evidence.knowledge, market_used=bool(tool_plan.get("market")))
         out = enforce(out, safety)

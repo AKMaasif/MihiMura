@@ -12,11 +12,10 @@ from app.agents import i18n
 from app.agents.agronomy import retrieve_approved_knowledge
 from app.agents.contracts import ChatOutput, finalize_response, step
 from app.agents.evidence_sources import knowledge_sources
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
 from app.agents.prompts import CHAT_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
 from app.agents.turn import Turn
-from app.core.config import settings
 from app.services.language import detect_language, normalize_language
 
 _AGRICULTURE_TERMS = (
@@ -113,7 +112,9 @@ def run_chat(turn: Turn) -> dict[str, Any]:
         "knowledge": knowledge,
     }
     try:
-        out = generate_structured(system=CHAT_SYSTEM_PROMPT, payload=payload, schema=ChatOutput, temperature=0.4)
+        out, model_used = generate_structured_with_model(
+            system=CHAT_SYSTEM_PROMPT, payload=payload, schema=ChatOutput, tier="fast", temperature=0.4
+        )
     except LLMUnavailable:
         return _attach_rag(fallback_answer(turn.question, turn.history, turn.memory, turn.language), knowledge)
     except LLMError as exc:
@@ -135,6 +136,6 @@ def run_chat(turn: Turn) -> dict[str, Any]:
         step("Conversation Memory", f"Used {min(len(turn.history), 18)} recent turn(s) and saved scenario facts"),
     ]
     out["provider"] = "gemini"
-    out["model"] = settings.GEMINI_MODEL
+    out["model"] = model_used
     out["prompt_version"] = PROMPT_VERSION
     return _attach_rag(out, knowledge)

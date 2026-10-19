@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     SUPABASE_KNOWLEDGE_BUCKET: str = "mihimura-knowledge"
 
     GEMINI_API_KEY: Optional[str] = None
+    # Model tiers. Each list is tried in order; a model that is unavailable for
+    # this API key (no quota, not found) is skipped automatically.
+    # Reasoning: Decision Support, Full Report and Crop Vision.
+    GEMINI_REASONING_MODELS: str = "gemini-4-argon,gemini-3.8-flash,gemini-2.5-flash"
+    # Fast: Simple Chat and report translation.
+    GEMINI_FAST_MODELS: str = "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-2.5-flash"
+    # Legacy single-model setting, kept as the last fallback in both tiers.
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSION: int = 768
@@ -32,9 +39,9 @@ class Settings(BaseSettings):
     RAG_EMBED_MAX_RETRIES: int = 3
     RAG_EMBED_RETRY_BASE_SECONDS: float = 1.5
     RAG_MAX_EXCERPT_CHARS: int = 1200
-    GEMINI_LIVE_MODEL: str = "gemini-3.1-flash-live-preview"
+    GEMINI_LIVE_MODEL: str = "gemini-3.8-live"
     GEMINI_LIVE_VOICE: str = "Algenib"
-    GEMINI_TTS_MODEL: str = "gemini-3.1-flash-tts-preview"
+    GEMINI_TTS_MODEL: str = "gemini-3.8-flash-tts"
     GEMINI_TTS_VOICE: str = "Algenib"
 
     SENTINEL_CLIENT_ID: Optional[str] = None
@@ -47,6 +54,18 @@ class Settings(BaseSettings):
 
     MAX_UPLOAD_MB: int = 8
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @staticmethod
+    def _split(value: str) -> list[str]:
+        return [x.strip() for x in (value or "").split(",") if x.strip()]
+
+    @property
+    def reasoning_models(self) -> list[str]:
+        return self._split(self.GEMINI_REASONING_MODELS) + [self.GEMINI_MODEL]
+
+    @property
+    def fast_models(self) -> list[str]:
+        return self._split(self.GEMINI_FAST_MODELS) + [self.GEMINI_MODEL]
 
     @property
     def origins(self) -> list[str]:

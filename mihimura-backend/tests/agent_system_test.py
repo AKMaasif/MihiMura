@@ -154,6 +154,23 @@ def run() -> None:
     vision = analyze_crop_images([(b"fake-bytes", "image/jpeg")], "Chilli")
     assert vision["crop_confidence"] == 1.0 and vision["expert_review"] is True and vision["image_count"] == 1
 
+    # --- Model fallback: an unavailable flagship is skipped automatically -----
+    from app.agents.llm import models_for
+
+    tried: list[str] = []
+
+    def flaky_generate(*, model, contents, config):
+        tried.append(model)
+        if model == models_for("reasoning")[0]:
+            raise RuntimeError("429 RESOURCE_EXHAUSTED: quota limit 0 for this model")
+        return SimpleNamespace(parsed=None, text=json.dumps({"summary": "ok", "recommended_action": "ok", "why": "ok"}))
+
+    llm.get_gemini_client = lambda: SimpleNamespace(models=SimpleNamespace(generate_content=flaky_generate))  # type: ignore[assignment]
+    fallback = ask("can i apply fertilizer tomorrow?", context={"location": "Galle"})
+    assert fallback["provider"] == "gemini", fallback.get("provider_error")
+    assert tried[0] == models_for("reasoning")[0] and fallback["model"] == models_for("reasoning")[1], (tried, fallback["model"])
+    assert models_for("fast")[0] != models_for("reasoning")[0], "chat should use the fast tier"
+
     without_model()
     print("MihiMura agent system regression test: PASS")
 

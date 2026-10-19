@@ -464,9 +464,11 @@ def _structured_generate(
     *,
     max_output_tokens: int = 32768,
     temperature: float = 0.15,
+    tier: str = "reasoning",
 ) -> dict[str, Any]:
     """Schema-validated generation via the shared agent model layer."""
     return generate_structured(
+        tier=tier,
         system=system,
         payload=payload,
         schema=schema,
@@ -529,6 +531,7 @@ def _translate_report_meta(client: Any, report: dict[str, Any], target: str) -> 
         ReportMetaTranslationPayload,
         max_output_tokens=10000,
         temperature=0.05,
+        tier="fast",
     )
 
 
@@ -540,6 +543,7 @@ def _translate_section_batch(client: Any, sections: list[dict[str, Any]], target
         ReportSectionBatchPayload,
         max_output_tokens=14000,
         temperature=0.05,
+        tier="fast",
     )
     translated = list(payload.get("sections") or [])
     if len(translated) != len(sections):

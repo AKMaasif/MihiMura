@@ -132,6 +132,12 @@ def health():
         "status": "ok",
         "version": settings.VERSION,
         "ai_configured": bool(settings.GEMINI_API_KEY),
+        "ai_models": {
+            "reasoning": settings.reasoning_models,
+            "fast": settings.fast_models,
+            "live_voice": settings.GEMINI_LIVE_MODEL,
+            "tts": settings.GEMINI_TTS_MODEL,
+        },
         "supabase_configured": supabase_configured(),
         "auth_provider": "supabase",
         "database": "supabase-postgres",
