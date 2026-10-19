@@ -29,3 +29,14 @@ def test_search_degrades_gracefully_without_runtime_configuration():
     result = search_knowledge("paddy fertilizer", crop="Paddy")
     assert "results" in result
     assert "evidence_quality" in result
+
+
+def run() -> None:
+    test_multilingual_chunking_preserves_unicode()
+    test_text_extraction()
+    test_search_degrades_gracefully_without_runtime_configuration()
+    print("MihiMura RAG phase 2 test: PASS")
+
+
+if __name__ == "__main__":
+    run()
