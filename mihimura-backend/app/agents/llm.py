@@ -70,22 +70,45 @@ def _build_contents(payload: dict[str, Any], images: list[tuple[bytes, str]] | N
     return parts
 
 
-def generate_structured(
+# Errors that mean "this model is not usable with this key" -> try the next model.
+_MODEL_UNAVAILABLE_MARKERS = (
+    "404", "not_found", "not found", "429", "resource_exhausted", "quota",
+    "403", "permission_denied", "unsupported", "is not supported",
+)
+
+
+def _model_unavailable(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS)
+
+
+def models_for(tier: str) -> list[str]:
+    """Ordered model chain for a tier ("reasoning" or "fast"), without duplicates."""
+    chain = settings.reasoning_models if tier == "reasoning" else settings.fast_models
+    return list(dict.fromkeys(m for m in chain if m))
+
+
+def generate_structured_with_model(
     *,
     system: str,
     payload: dict[str, Any],
     schema: type[SchemaT],
+    tier: str = "reasoning",
     images: list[tuple[bytes, str]] | None = None,
     temperature: float = 0.2,
     max_output_tokens: int = 4096,
     model: str | None = None,
     client: Any | None = None,
-) -> dict[str, Any]:
-    """Call Gemini and return a schema-validated dict.
+) -> tuple[dict[str, Any], str]:
+    """Call Gemini and return ``(schema-validated dict, model that answered)``.
+
+    Models are tried in tier order. A model that is unavailable for this API key
+    (not found, no quota, no permission) is skipped; a model that answers but
+    fails validation is retried once in plain-JSON mode before moving on.
 
     Raises:
         LLMUnavailable: no client configured.
-        LLMError: the call failed or the answer did not validate.
+        LLMError: every model failed or no answer validated.
     """
     client = client or get_gemini_client()
     if client is None:
@@ -100,26 +123,31 @@ def generate_structured(
     }
     errors: list[str] = []
 
-    for use_schema in (True, False):
-        config = dict(base_config)
-        if use_schema:
-            config["response_schema"] = schema
-        try:
-            response = client.models.generate_content(
-                model=model or settings.GEMINI_MODEL,
-                contents=contents,
-                config=config,
-            )
-            parsed = _to_dict(getattr(response, "parsed", None)) if use_schema else None
-            if parsed is not None:
-                return schema.model_validate(parsed).model_dump(mode="python")
-            validated = schema.model_validate_json(strip_json_fence(getattr(response, "text", "") or ""))
-            return validated.model_dump(mode="python")
-        except ValidationError as exc:
-            errors.append(f"{'schema' if use_schema else 'json'} mode: invalid output ({exc.error_count()} errors)")
-        except Exception as exc:  # provider/network errors
-            errors.append(f"{'schema' if use_schema else 'json'} mode: {exc}")
+    for model_name in [model] if model else models_for(tier):
+        for use_schema in (True, False):
+            config = dict(base_config)
+            if use_schema:
+                config["response_schema"] = schema
+            try:
+                response = client.models.generate_content(model=model_name, contents=contents, config=config)
+                parsed = _to_dict(getattr(response, "parsed", None)) if use_schema else None
+                if parsed is not None:
+                    return schema.model_validate(parsed).model_dump(mode="python"), model_name
+                validated = schema.model_validate_json(strip_json_fence(getattr(response, "text", "") or ""))
+                return validated.model_dump(mode="python"), model_name
+            except ValidationError as exc:
+                errors.append(f"{model_name} {'schema' if use_schema else 'json'}: invalid output ({exc.error_count()} errors)")
+            except Exception as exc:  # provider/network errors
+                errors.append(f"{model_name} {'schema' if use_schema else 'json'}: {exc}")
+                if _model_unavailable(exc):
+                    break  # this model cannot be used with this key; try the next one
 
     message = "; ".join(errors)
     logger.warning("structured generation failed for %s: %s", schema.__name__, message)
     raise LLMError(message)
+
+
+def generate_structured(**kwargs: Any) -> dict[str, Any]:
+    """Same as ``generate_structured_with_model`` but returns only the data."""
+    data, _model = generate_structured_with_model(**kwargs)
+    return data

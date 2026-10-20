@@ -403,6 +403,15 @@ def resolve_conversation_context(uid: str, conversation_id: str, question: str, 
         resolved["location"] = project.get("district") or resolved["location"]
         resolved["context_scope"] = "owned-project"
 
+    # A district chosen in the UI (e.g. a province selected on the map) is a
+    # scenario location. Only known districts are accepted, with their own
+    # coordinates; anything stated in the message itself still wins below.
+    selected_district = str(supplied.get("district") or "").strip()
+    if selected_district in DISTRICT_COORDS and not facts.get("location"):
+        lat, lon = DISTRICT_COORDS[selected_district]
+        resolved.update({"location": selected_district, "district": selected_district, "lat": lat, "lon": lon})
+        resolved["context_scope"] = "selected-region"
+
     for key in ["crop", "stage", "season", "variety", "irrigation", "area_value", "area_unit", "location", "district", "lat", "lon", "planting_date", "language"]:
         if facts.get(key) not in (None, "", []):
             resolved[key] = facts[key]

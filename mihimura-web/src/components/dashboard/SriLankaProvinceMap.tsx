@@ -10,6 +10,8 @@ interface SriLankaProvinceMapProps {
   activeLayer: MapLayer;
   provinces: Record<string, ProvinceData>;
   onSelectProvince: (province: string) => void;
+  /** Where the colours come from, e.g. "Live · updated 10:42". */
+  sourceNote?: string;
 }
 
 export const getLayerValue = (province: string, layer: MapLayer, provinces: Record<string, ProvinceData>) => {
@@ -46,6 +48,7 @@ export function SriLankaProvinceMap({
   activeLayer,
   provinces,
   onSelectProvince,
+  sourceNote,
 }: SriLankaProvinceMapProps) {
   const [zoom, setZoom] = useState(1);
   const [hoveredProvince, setHoveredProvince] = useState<string | null>(null);
@@ -145,7 +148,9 @@ export function SriLankaProvinceMap({
         </g>
       </svg>
 
-      <div className="map-source-note">District geometry grouped into 9 official provinces</div>
+      <div className="map-source-note">
+        {sourceNote ? `${sourceNote} · ` : ''}District geometry grouped into 9 official provinces
+      </div>
     </div>
   );
 }

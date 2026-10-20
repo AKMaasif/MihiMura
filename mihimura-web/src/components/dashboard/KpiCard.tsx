@@ -7,10 +7,11 @@ interface KpiCardProps {
   trend?: string;
   tone: 'green' | 'blue' | 'orange' | 'red' | 'purple';
   icon: LucideIcon;
-  sparkline: number[];
+  /** Optional history; when omitted the space is kept so card layouts stay aligned. */
+  sparkline?: number[];
 }
 
-export function KpiCard({ label, value, note, trend, tone, icon: Icon, sparkline }: KpiCardProps) {
+export function KpiCard({ label, value, note, trend, tone, icon: Icon, sparkline = [] }: KpiCardProps) {
   const max = Math.max(...sparkline);
   const min = Math.min(...sparkline);
   const range = max - min || 1;
@@ -35,7 +36,7 @@ export function KpiCard({ label, value, note, trend, tone, icon: Icon, sparkline
         <strong className="kpi-value">{value}</strong>
         <svg className="kpi-sparkline" viewBox="0 0 96 36" aria-hidden="true">
           <polyline
-            points={points}
+            points={sparkline.length > 1 ? points : ''}
             fill="none"
             stroke="currentColor"
             strokeWidth="3"

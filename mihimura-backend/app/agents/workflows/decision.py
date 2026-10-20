@@ -19,13 +19,12 @@ from typing import Any
 from app.agents import i18n
 from app.agents.contracts import DecisionOutput, finalize_response, step
 from app.agents.evidence_sources import evidence_sources
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
 from app.agents.prompts import DECISION_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
 from app.agents.safety import enforce, precheck, review_rates
 from app.agents.specialists import Evidence, collect_evidence
 from app.agents.turn import Turn
-from app.core.config import settings
 from app.services.evidence_validation import assess_evidence, validate_response_claims
 from app.services.language import detect_language, normalize_language
 from app.services.tool_planner import build_tool_plan
@@ -122,6 +121,28 @@ def fallback_decision(
     return enforce(out, safety)
 
 
+def regional_situation(context: dict[str, Any]) -> dict[str, Any]:
+    """Live province indices for the user's district (same data as the maps)."""
+    from app.services.situation import PROVINCES, get_province_situation
+
+    district = str(context.get("district") or context.get("location") or "")
+    province = next((name for name, info in PROVINCES.items() if district in info["districts"]), None)
+    if not province:
+        return {"status": "not_available", "reason": "district not resolved"}
+    try:
+        situation = get_province_situation()
+    except Exception as exc:
+        return {"status": "unavailable", "reason": str(exc)}
+    entry = situation["provinces"].get(province, {})
+    return {
+        "status": "live" if situation.get("live") else "baseline_not_current",
+        "province": province,
+        "source": situation.get("source"),
+        "generated_at": situation.get("generatedAt"),
+        "indices": {k: entry.get(k) for k in ("healthScore", "rainfallRisk", "pestRisk", "waterStress", "alerts", "nextAction")},
+    }
+
+
 def _model_payload(turn: Turn, evidence: Evidence, plan_detail: dict[str, Any], quality: dict[str, Any], safety: dict[str, Any]) -> dict[str, Any]:
     plan = plan_detail.get("tools") or {}
 
@@ -144,6 +165,7 @@ def _model_payload(turn: Turn, evidence: Evidence, plan_detail: dict[str, Any], 
         "market": evidence.market,
         "economics": evidence.economics,
         "resource_plan": evidence.resources,
+        "regional_situation": regional_situation(turn.context),
         "evidence_quality": quality,
         "safety": safety,
     }
@@ -168,14 +190,15 @@ def run_decision(turn: Turn) -> dict[str, Any]:
 
     provider_error: str | None = None
     try:
-        out = generate_structured(
+        out, model_used = generate_structured_with_model(
+            tier="reasoning",
             system=DECISION_SYSTEM_PROMPT,
             payload=_model_payload(turn, evidence, plan_detail, quality, safety),
             schema=DecisionOutput,
             temperature=0.2,
         )
         out = review_rates(out, evidence.knowledge, safety)
-        out.update({"provider": "gemini", "model": settings.GEMINI_MODEL, "prompt_version": PROMPT_VERSION})
+        out.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
         if not out.get("sources"):
             out["sources"] = evidence_sources(evidence.weather, evidence.climate, evidence.knowledge, market_used=bool(tool_plan.get("market")))
         out = enforce(out, safety)

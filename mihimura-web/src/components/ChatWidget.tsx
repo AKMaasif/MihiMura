@@ -2,6 +2,7 @@ import { Bot, MessageCircle, Send, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { askMihimura } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import './ChatWidget.css';
 
 interface Message {
@@ -19,12 +20,14 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
-      text: 'Hello! I am the Mihimura AI advisor. Ask me about weather risk, crop health, pests, irrigation, or field actions.',
+      text: 'Ask about weather risk, crop condition, pests, irrigation or field work in the province selected on the map.',
       sender: 'agent',
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string>();
+  const { language } = useLanguage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,13 +49,16 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
     setIsLoading(true);
 
     try {
-      const response = await askMihimura(question, province);
-      const extra = response.recommended_action ? ` ${response.recommended_action}` : '';
+      const response = await askMihimura(question, province, conversationId, language);
+      if (response?.conversation_id) setConversationId(response.conversation_id);
+      const summary = String(response.summary || '').trim();
+      const action = String(response.recommended_action || '').trim();
+      const extra = action && action !== summary && !summary.includes(action) ? `\n\n${action}` : '';
       setMessages((current) => [
         ...current,
         {
           id: `agent-${Date.now()}`,
-          text: `${response.summary}${extra}`,
+          text: `${summary}${extra}`,
           sender: 'agent',
         },
       ]);
@@ -62,7 +68,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
         ...current,
         {
           id: `error-${Date.now()}`,
-          text: 'The AI service is currently unavailable. Start the FastAPI backend on port 8000 and try again.',
+          text: `I couldn't reach MihiMura just now (${error instanceof Error ? error.message : 'connection problem'}). Please try again in a moment.`,
           sender: 'agent',
         },
       ]);
@@ -75,7 +81,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
     <>
       <button type="button" className={`chat-fab${isOpen ? ' hidden' : ''}`} onClick={() => setIsOpen(true)}>
         <MessageCircle size={18} />
-        Ask Mihimura AI
+        Ask MihiMura
       </button>
 
       <section className={`chat-window${isOpen ? ' open' : ''}`} aria-label="Mihimura AI assistant">
@@ -85,7 +91,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
               <Bot size={21} />
             </span>
             <div>
-              <h3>Mihimura AI</h3>
+              <h3>MihiMura</h3>
               <p>{province} Province context</p>
             </div>
           </div>
@@ -118,7 +124,11 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
         </div>
 
         <div className="chat-quick-prompts">
-          {['Can I fertilize tomorrow?', 'Show the main risk', 'What should I inspect?'].map((prompt) => (
+          {[
+            `What is the main risk in ${province} now?`,
+            `Is it safe to apply fertilizer in ${province} tomorrow?`,
+            'What should I inspect this week?',
+          ].map((prompt) => (
             <button key={prompt} type="button" onClick={() => setInputValue(prompt)}>
               {prompt}
             </button>
@@ -128,7 +138,7 @@ export default function ChatWidget({ province }: ChatWidgetProps) {
         <div className="chat-input-area">
           <input
             type="text"
-            placeholder="Ask about crops, weather or actions..."
+            placeholder={`Ask about ${province} Province…`}
             value={inputValue}
             maxLength={4000}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setInputValue(event.target.value)}

@@ -60,6 +60,7 @@ from app.services.knowledge_base import (
     update_knowledge_document,
 )
 from app.services.satellite import catalog_search, configured as satellite_configured
+from app.services.situation import get_province_situation
 from app.services.voice import create_voice_session_token, synthesize_voice
 from app.services.weather import get_weather
 from app.supabase_client import supabase_configured
@@ -132,6 +133,12 @@ def health():
         "status": "ok",
         "version": settings.VERSION,
         "ai_configured": bool(settings.GEMINI_API_KEY),
+        "ai_models": {
+            "reasoning": settings.reasoning_models,
+            "fast": settings.fast_models,
+            "live_voice": settings.GEMINI_LIVE_MODEL,
+            "tts": settings.GEMINI_TTS_MODEL,
+        },
         "supabase_configured": supabase_configured(),
         "auth_provider": "supabase",
         "database": "supabase-postgres",
@@ -263,6 +270,12 @@ def weather(lat: float = Latitude, lon: float = Longitude, days: int = Query(14,
 @router.get("/climate-history")
 def climate_history(lat: float = Latitude, lon: float = Longitude, days: int = Query(30, ge=1, le=365)):
     return get_nasa_power(lat, lon, days)
+
+
+@router.get("/situation/provinces")
+def province_situation():
+    """Live province risk indices for the maps (public, cached for 30 minutes)."""
+    return get_province_situation()
 
 
 @router.get("/satellite/catalog")
@@ -844,6 +857,7 @@ async def diagnose_image(
     crop_hint: str = Form(""),
     project_id: str = Form(""),
     symptoms: str = Form(""),
+    language: str = Form("English"),
     u=Depends(get_current_user),
 ):
     if not images or len(images) > 4:
@@ -862,6 +876,6 @@ async def diagnose_image(
         names.append(image.filename or "image")
     if total > settings.MAX_UPLOAD_MB * 4 * 1024 * 1024:
         raise HTTPException(400, "Combined upload is too large")
-    result = analyze_crop_images(prepared, crop_hint, symptoms)
+    result = analyze_crop_images(prepared, crop_hint, symptoms, language)
     audit(u["uid"], "crop_image_analysis", project_id or "unassigned", {"filenames": names, "image_count": len(images), "provider": result.get("provider"), "expert_review": result.get("expert_review")})
     return result

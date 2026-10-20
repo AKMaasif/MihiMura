@@ -4,10 +4,12 @@ import { Card, Notice, Status, Button } from '../../components/common/UI';
 import { useNavigate } from 'react-router-dom';
 import { platformApi } from '../../services/platformApi';
 import { SriLankaProvinceMap } from '../../components/dashboard/SriLankaProvinceMap';
-import { provinceData } from '../../data/mockApi';
+import { situationLabel, useProvinceSituation } from '../../hooks/useProvinceSituation';
 
 export function DisasterMapPage() {
   const nav = useNavigate();
+  const situation = useProvinceSituation();
+  const provinceData = situation.provinces;
   const [selected, setSelected] = useState('Eastern'),
     [projects, setProjects] = useState<any[]>([]),
     [notice, setNotice] = useState('');
@@ -17,6 +19,17 @@ export function DisasterMapPage() {
       .then(setProjects)
       .catch(() => {});
   }, []);
+  const current = provinceData[selected];
+  const score = (value?: number | null) => (value === null || value === undefined ? '—' : `${value}/100`);
+  // Hill-country provinces are landslide-prone; heavy forecast rain raises the level.
+  const hilly = ['Central', 'Sabaragamuwa', 'Uva'].includes(selected);
+  const landslide = !hilly
+    ? 'Low'
+    : current.rainfallRisk >= 70
+      ? 'High'
+      : current.rainfallRisk >= 45
+        ? 'Watch'
+        : 'Low';
   const create = async () => {
     const p = projects.find((x) => x.province === selected) || projects[0];
     if (!p) {
@@ -28,7 +41,7 @@ export function DisasterMapPage() {
       title: `Review ${selected} rainfall/runoff exposure`,
       task_type: 'Disaster preparation',
       due_at: new Date(Date.now() + 12 * 3600e3).toISOString(),
-      priority: provinceData[selected].rainfallRisk > 70 ? 'high' : 'medium',
+      priority: current.rainfallRisk > 70 ? 'high' : 'medium',
       weather_dependency: 'Verify current official warning and live forecast',
       instructions:
         'Inspect drainage, access routes and vulnerable crop-stage operations. Escalate emergency warnings to official guidance.',
@@ -55,45 +68,53 @@ export function DisasterMapPage() {
           {notice}
         </Notice>
       )}
-      <Card title="Sri Lanka hazard overview" subtitle="Select a province to inspect current demo exposure">
+      <Card
+        title="Sri Lanka hazard overview"
+        subtitle={
+          situation.live
+            ? 'Select a province to inspect current exposure from live forecast data'
+            : 'Live data unavailable — showing baseline reference values'
+        }
+      >
         <div className="national-map-grid">
           <SriLankaProvinceMap
             selectedProvince={selected}
             activeLayer="rainfallRisk"
             provinces={provinceData}
             onSelectProvince={setSelected}
+            sourceNote={situationLabel(situation)}
           />
           <div className="province-side">
             <Status tone="orange">{selected} Province</Status>
-            <h2>{provinceData[selected].rainfallRisk}/100</h2>
+            <h2>{current.rainfallRisk}/100</h2>
             <p>Rainfall / runoff exposure proxy</p>
             <div className="risk-mini-list">
               <div>
                 <CloudRain />
                 <span>
                   <small>Flood / runoff</small>
-                  <b>{provinceData[selected].rainfallRisk}/100</b>
+                  <b>{current.rainfallRisk}/100</b>
                 </span>
               </div>
               <div>
                 <ThermometerSun />
                 <span>
                   <small>Heat</small>
-                  <b>52/100</b>
+                  <b>{score(current.heatStress)}</b>
                 </span>
               </div>
               <div>
                 <Waves />
                 <span>
-                  <small>Drought proxy</small>
-                  <b>{Math.max(18, 100 - provinceData[selected].rainfallRisk)}/100</b>
+                  <small>Drought / water stress</small>
+                  <b>{score(current.waterStress)}</b>
                 </span>
               </div>
               <div>
                 <AlertTriangle />
                 <span>
                   <small>Landslide / slope</small>
-                  <b>{['Central', 'Sabaragamuwa', 'Uva'].includes(selected) ? 'Watch' : 'Low'}</b>
+                  <b>{landslide}</b>
                 </span>
               </div>
             </div>

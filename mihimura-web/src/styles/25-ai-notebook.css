@@ -1,0 +1,1228 @@
+/*
+ * MihiMura AI workspace — "paddy-field notebook".
+ *
+ * Ruled rice-paper page for the conversation, a field card for the decision,
+ * and a field log showing how each answer was made. Literata for answers,
+ * Noto Sans (with its Sinhala and Tamil companions) for everything else.
+ * Replaces the former 21-ai-readability and 24-ai-desktop-workspace layers.
+ */
+
+.ai-shell.notebook {
+  --nb-paper: #f6f8f2;
+  --nb-sheet: #ffffff;
+  --nb-ink: #17261d;
+  --nb-muted: #5d6b61;
+  --nb-faint: #8a978e;
+  --nb-rule: #dce5d6;
+  --nb-rule-soft: #e9efe5;
+  --nb-leaf: #2e6a45;
+  --nb-leaf-deep: #1f4d31;
+  --nb-leaf-wash: #e6f0e4;
+  --nb-turmeric: #b7861a;
+  --nb-laterite: #c0562e;
+  --nb-monsoon: #2c6e8f;
+  --nb-danger: #a3262a;
+  --nb-serif: 'Literata', 'Noto Serif Sinhala', 'Noto Serif Tamil', Georgia, serif;
+  --nb-sans: 'Noto Sans', 'Noto Sans Sinhala', 'Noto Sans Tamil', Inter, system-ui, sans-serif;
+  --nb-radius: 10px;
+
+  display: grid;
+  grid-template-columns: clamp(214px, 16vw, 244px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  color: var(--nb-ink);
+  font-family: var(--nb-sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* Shared surfaces ------------------------------------------------------- */
+
+.ai-shell.notebook .ui-card,
+.ai-shell.notebook .ai-history-panel,
+.ai-shell.notebook .ai-mode-bar {
+  border: 1px solid var(--nb-rule);
+  border-radius: var(--nb-radius);
+  background: var(--nb-sheet);
+  box-shadow: none;
+}
+
+.ai-shell.notebook .ui-card-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--nb-rule-soft);
+}
+
+.ai-shell.notebook .ui-card-header h3 {
+  margin: 0;
+  font-family: var(--nb-serif);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .ui-card-header p {
+  margin: 3px 0 0;
+  color: var(--nb-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ai-shell.notebook small,
+.ai-shell.notebook b {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ai-shell.notebook .ui-btn {
+  min-height: 40px;
+  border-radius: 8px;
+  font-family: var(--nb-sans);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ui-btn.primary {
+  background: var(--nb-leaf);
+  border-color: var(--nb-leaf);
+  color: #fff;
+}
+
+.ai-shell.notebook .ui-btn.primary:hover:not(:disabled) {
+  background: var(--nb-leaf-deep);
+}
+
+.ai-shell.notebook .ui-btn.secondary {
+  background: var(--nb-sheet);
+  border: 1px solid var(--nb-rule);
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook :focus-visible {
+  outline: 2px solid var(--nb-monsoon);
+  outline-offset: 2px;
+}
+
+/* Conversation list ------------------------------------------------------ */
+
+.ai-shell.notebook .ai-history-panel {
+  position: sticky;
+  top: 14px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--nb-paper);
+}
+
+.ai-shell.notebook .ai-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-shell.notebook .ai-history-head > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ai-shell.notebook .ai-history-head svg {
+  width: 18px;
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-history-head b {
+  display: block;
+  font-family: var(--nb-serif);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-history-head small {
+  color: var(--nb-muted);
+  font-size: 12px;
+}
+
+.ai-shell.notebook .ai-history-head > button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--nb-rule);
+  border-radius: 8px;
+  background: var(--nb-sheet);
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-new-chat {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed var(--nb-leaf);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nb-leaf-deep);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-new-chat:hover {
+  background: var(--nb-leaf-wash);
+}
+
+.ai-shell.notebook .ai-history-list {
+  display: grid;
+  gap: 2px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.ai-shell.notebook .ai-history-list > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 8px 8px 0;
+  background: transparent;
+  text-align: left;
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .ai-history-list > button:hover {
+  background: var(--nb-sheet);
+}
+
+.ai-shell.notebook .ai-history-list > button.active {
+  border-left-color: var(--nb-leaf);
+  background: var(--nb-sheet);
+}
+
+.ai-shell.notebook .ai-history-list b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-history-list small {
+  color: var(--nb-faint);
+  font-size: 12px;
+}
+
+.ai-shell.notebook .ai-history-list i {
+  font-style: normal;
+  color: var(--nb-faint);
+  text-align: center;
+  border-radius: 6px;
+}
+
+.ai-shell.notebook .ai-history-list i:hover {
+  color: var(--nb-laterite);
+  background: #f6e7e0;
+}
+
+.ai-shell.notebook .ai-history-empty {
+  padding: 10px;
+  color: var(--nb-muted);
+  font-size: 13px;
+}
+
+.ai-shell.notebook .ai-history-empty small {
+  display: block;
+  color: var(--nb-faint);
+}
+
+.ai-shell.notebook .ai-memory-note {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--nb-rule);
+  color: var(--nb-muted);
+  font-size: 12px;
+}
+
+.ai-shell.notebook .ai-memory-note svg {
+  width: 16px;
+  flex: none;
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-memory-note b {
+  display: block;
+  color: var(--nb-ink);
+  font-size: 12.5px;
+}
+
+/* Mode tabs -------------------------------------------------------------- */
+
+.ai-shell.notebook .ai-main-column {
+  min-width: 0;
+}
+
+.ai-shell.notebook .ai-mode-bar {
+  margin-bottom: 14px;
+  padding: 6px;
+}
+
+.ai-shell.notebook .ai-mode-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.ai-shell.notebook .ai-mode-options button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--nb-muted);
+  font-size: 14px;
+}
+
+.ai-shell.notebook .ai-mode-options button svg {
+  width: 17px;
+}
+
+.ai-shell.notebook .ai-mode-options button b {
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-mode-options button:hover {
+  color: var(--nb-ink);
+  background: var(--nb-paper);
+}
+
+.ai-shell.notebook .ai-mode-options button.active {
+  color: #fff;
+  background: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-mode-description {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 4px;
+  color: var(--nb-muted);
+  font-size: 13px;
+}
+
+.ai-shell.notebook .ai-mode-description b {
+  margin-right: 6px;
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .ai-mode-description i {
+  flex: none;
+  font-style: normal;
+  color: var(--nb-leaf-deep);
+}
+
+/* Workbench -------------------------------------------------------------- */
+
+.ai-shell.notebook .ai-workbench {
+  display: grid;
+  grid-template-columns: minmax(480px, 1.2fr) minmax(330px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.ai-shell.notebook .ai-chat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  min-height: clamp(540px, calc(100dvh - 230px), 760px);
+}
+
+.ai-shell.notebook .compact-select,
+.ai-shell.notebook .ai-context-selector select,
+.ai-shell.notebook .ai-clarification-card select,
+.ai-shell.notebook .ai-clarification-card input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--nb-rule);
+  border-radius: 8px;
+  background: var(--nb-sheet);
+  color: var(--nb-ink);
+  font-family: var(--nb-sans);
+  font-size: 14px;
+}
+
+.ai-shell.notebook .ai-context-selector {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
+  gap: 10px;
+  align-items: end;
+}
+
+.ai-shell.notebook .ai-context-strip {
+  display: grid;
+  gap: 1px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--nb-leaf-wash);
+}
+
+.ai-shell.notebook .ai-context-strip > span {
+  color: var(--nb-leaf-deep);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-context-strip b {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .ai-context-strip small {
+  color: var(--nb-muted);
+  font-size: 12.5px;
+}
+
+.ai-shell.notebook .ai-context-selector label {
+  display: grid;
+  gap: 4px;
+  color: var(--nb-muted);
+  font-size: 12.5px;
+}
+
+/* The ruled notebook page --------------------------------------------------- */
+
+.ai-shell.notebook .ai-message-list {
+  flex: 1 1 auto;
+  min-height: 260px;
+  max-height: clamp(300px, 46dvh, 560px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 18px 46px;
+  border: 1px solid var(--nb-rule);
+  border-radius: var(--nb-radius);
+  /* Margin line and faint ruling, like a field notebook page. */
+  background:
+    linear-gradient(90deg, transparent 33px, rgba(46, 106, 69, 0.28) 33px, rgba(46, 106, 69, 0.28) 34px, transparent 34px),
+    repeating-linear-gradient(180deg, transparent 0 31px, var(--nb-rule-soft) 31px 32px),
+    var(--nb-paper);
+  scroll-behavior: smooth;
+}
+
+.ai-shell.notebook .ai-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 100%;
+}
+
+.ai-shell.notebook .ai-msg.assistant {
+  align-self: stretch;
+}
+
+.ai-shell.notebook .ai-msg.assistant > svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-left: -40px;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--nb-leaf);
+  color: #fff;
+}
+
+.ai-shell.notebook .ai-msg.assistant .ai-message-text {
+  display: block;
+  font-family: var(--nb-serif);
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: var(--nb-ink);
+  white-space: pre-wrap;
+  max-width: 68ch;
+}
+
+.ai-shell.notebook .ai-msg.user {
+  align-self: flex-end;
+  max-width: 78%;
+}
+
+.ai-shell.notebook .ai-msg.user > div {
+  padding: 9px 13px;
+  border-radius: 10px 10px 2px 10px;
+  background: var(--nb-leaf-deep);
+  color: #fff;
+}
+
+.ai-shell.notebook .ai-msg.user .ai-message-text {
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.ai-shell.notebook .ai-inline-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 7px 11px;
+  border: 1px solid var(--nb-leaf);
+  border-radius: 8px;
+  background: var(--nb-sheet);
+  color: var(--nb-leaf-deep);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ai-shell.notebook .ai-inline-report svg {
+  width: 16px;
+}
+
+.ai-shell.notebook .ai-chat-welcome {
+  margin: auto;
+  max-width: 470px;
+  text-align: left;
+}
+
+.ai-shell.notebook .ai-chat-welcome svg {
+  width: 30px;
+  height: 30px;
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-chat-welcome h3 {
+  margin: 10px 0 6px;
+  font-family: var(--nb-serif);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ai-shell.notebook .ai-chat-welcome p {
+  margin: 0;
+  font-family: var(--nb-serif);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--nb-muted);
+}
+
+.ai-shell.notebook .ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--nb-muted);
+  font-size: 14px;
+  font-style: italic;
+  font-family: var(--nb-serif);
+}
+
+.ai-shell.notebook .ai-thinking i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nb-leaf);
+  animation: nb-dot 1.2s ease-in-out infinite;
+}
+
+.ai-shell.notebook .ai-thinking i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-shell.notebook .ai-thinking i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.ai-shell.notebook .ai-thinking span {
+  margin-left: 6px;
+}
+
+@keyframes nb-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Report, clarification and mode-switch slips ---------------------------- */
+
+.ai-shell.notebook .ai-report-ready,
+.ai-shell.notebook .ai-clarification-card,
+.ai-shell.notebook .ai-mode-switch-card {
+  padding: 12px 14px;
+  border: 1px solid var(--nb-rule);
+  border-left: 4px solid var(--nb-leaf);
+  border-radius: 8px;
+  background: var(--nb-sheet);
+}
+
+.ai-shell.notebook .ai-report-ready {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-shell.notebook .ai-report-ready svg {
+  width: 20px;
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-report-ready b {
+  display: block;
+  font-size: 14.5px;
+}
+
+.ai-shell.notebook .ai-report-ready small {
+  color: var(--nb-muted);
+  font-size: 13px;
+}
+
+.ai-shell.notebook .ai-report-ready a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--nb-leaf);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ai-shell.notebook .ai-mode-switch-card {
+  border-left-color: var(--nb-monsoon);
+}
+
+.ai-shell.notebook .ai-clarification-card {
+  border-left-color: var(--nb-turmeric);
+}
+
+.ai-shell.notebook .ai-clarification-grid label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--nb-muted);
+}
+
+/* Suggestions and composer ---------------------------------------------------- */
+
+.ai-shell.notebook .ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-shell.notebook .ai-suggestions button {
+  padding: 6px 11px;
+  border: 1px solid var(--nb-rule);
+  border-radius: 999px;
+  background: var(--nb-sheet);
+  color: var(--nb-ink);
+  font-size: 13.5px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.ai-shell.notebook .ai-suggestions button:hover {
+  border-color: var(--nb-leaf);
+  background: var(--nb-leaf-wash);
+}
+
+.ai-shell.notebook .ai-composer {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 46px;
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 1.5px solid var(--nb-rule);
+  border-radius: var(--nb-radius);
+  background: var(--nb-sheet);
+}
+
+.ai-shell.notebook .ai-composer:focus-within {
+  border-color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .ai-composer > button:not(.ui-btn) {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--nb-paper);
+  color: var(--nb-muted);
+}
+
+.ai-shell.notebook .ai-composer textarea {
+  min-height: 42px;
+  max-height: 140px;
+  padding: 9px 4px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--nb-ink);
+  font-family: var(--nb-sans);
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.ai-shell.notebook .ai-composer textarea::placeholder {
+  color: var(--nb-faint);
+}
+
+.ai-shell.notebook .ai-composer .ui-btn {
+  width: 46px;
+  min-width: 46px;
+  height: 42px;
+  padding: 0;
+}
+
+/* Voice launcher (legacy rules use !important, so these must too) */
+.ai-shell.notebook .voice-launch {
+  min-height: 52px !important;
+  margin: 0 !important;
+  border: 1px solid var(--nb-rule) !important;
+  border-radius: var(--nb-radius) !important;
+  background: var(--nb-sheet) !important;
+  box-shadow: none !important;
+  color: var(--nb-ink) !important;
+}
+
+.ai-shell.notebook .voice-launch > span {
+  border-radius: 50% !important;
+  background: var(--nb-leaf) !important;
+  box-shadow: none !important;
+}
+
+.ai-shell.notebook .voice-launch b {
+  font-size: 14px !important;
+}
+
+.ai-shell.notebook .voice-launch small {
+  font-size: 12.5px !important;
+  color: var(--nb-muted) !important;
+}
+
+/* Field card: the decision ---------------------------------------------------- */
+
+.ai-shell.notebook .ai-evidence-column {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: 14px;
+}
+
+.ai-shell.notebook .ai-evidence-column .ui-card {
+  padding: 16px;
+}
+
+.ai-shell.notebook .decision-result {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.ai-shell.notebook .decision-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+/* The stamp: the one bold element of the workspace. */
+.ai-shell.notebook .risk-stamp {
+  display: inline-block;
+  padding: 6px 12px 5px;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  transform: rotate(-3deg);
+  font-family: var(--nb-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.ai-shell.notebook .risk-stamp.risk-low {
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .risk-stamp.risk-watch {
+  color: var(--nb-turmeric);
+}
+
+.ai-shell.notebook .risk-stamp.risk-action {
+  color: var(--nb-laterite);
+}
+
+.ai-shell.notebook .risk-stamp.risk-emergency {
+  color: #fff;
+  border-color: var(--nb-danger);
+  background: var(--nb-danger);
+}
+
+.ai-shell.notebook .confidence {
+  display: grid;
+  gap: 5px;
+  color: var(--nb-muted);
+  font-size: 13px;
+}
+
+.ai-shell.notebook .confidence b {
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .confidence-meter {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--nb-rule-soft);
+  overflow: hidden;
+}
+
+.ai-shell.notebook .confidence-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--nb-leaf);
+}
+
+.ai-shell.notebook .decision-result > section {
+  display: grid;
+  gap: 4px;
+}
+
+.ai-shell.notebook .decision-result > section small {
+  color: var(--nb-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .decision-result > section h3 {
+  margin: 0;
+  font-family: var(--nb-serif);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .decision-result > section p,
+.ai-shell.notebook .counterfactual p {
+  margin: 0;
+  font-family: var(--nb-serif);
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .decision-result details {
+  border-top: 1px solid var(--nb-rule);
+  padding-top: 10px;
+}
+
+.ai-shell.notebook .decision-result summary {
+  cursor: pointer;
+  color: var(--nb-leaf-deep);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .source-evidence-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.ai-shell.notebook .source-evidence-list > div {
+  display: flex;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.ai-shell.notebook .source-evidence-list svg {
+  flex: none;
+  width: 16px;
+  margin-top: 2px;
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .source-evidence-list b {
+  display: block;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .source-evidence-list small {
+  color: var(--nb-muted);
+  font-size: 12.5px;
+}
+
+.ai-shell.notebook .decision-lists {
+  display: grid;
+  gap: 12px;
+  margin-top: 9px;
+}
+
+.ai-shell.notebook .decision-lists > div {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-shell.notebook .decision-lists b {
+  font-size: 13.5px;
+}
+
+.ai-shell.notebook .decision-lists span {
+  display: flex;
+  gap: 7px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ai-shell.notebook .decision-lists svg {
+  flex: none;
+  width: 16px;
+  margin-top: 3px;
+}
+
+.ai-shell.notebook .decision-lists > div:first-child svg {
+  color: var(--nb-leaf);
+}
+
+.ai-shell.notebook .decision-lists > div:last-child svg {
+  color: var(--nb-laterite);
+}
+
+.ai-shell.notebook .counterfactual {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--nb-paper);
+}
+
+.ai-shell.notebook .counterfactual b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13.5px;
+}
+
+.ai-shell.notebook .inline-warning {
+  color: var(--nb-muted);
+  font-size: 13px;
+}
+
+.ai-shell.notebook .decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-shell.notebook .decision-actions .ui-btn {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.ai-shell.notebook .decision-actions .ui-btn svg {
+  width: 15px;
+}
+
+/* Field log: how the answer was made ------------------------------------- */
+
+.ai-shell.notebook .field-log {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-shell.notebook .agent-trace-list {
+  position: relative;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 2px 0 0;
+  list-style: none;
+}
+
+.ai-shell.notebook .agent-trace-list li {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 0 0 12px 24px;
+}
+
+/* the vertical thread */
+.ai-shell.notebook .agent-trace-list li::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  background: var(--nb-rule);
+}
+
+.ai-shell.notebook .agent-trace-list li:last-child::before {
+  display: none;
+}
+
+/* the node */
+.ai-shell.notebook .agent-trace-list li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--nb-sheet);
+  background: var(--nb-leaf);
+  box-shadow: 0 0 0 1px var(--nb-leaf);
+}
+
+.ai-shell.notebook .agent-trace-list li[data-status='watch']::after {
+  background: var(--nb-turmeric);
+  box-shadow: 0 0 0 1px var(--nb-turmeric);
+}
+
+.ai-shell.notebook .agent-trace-list li[data-status='error']::after,
+.ai-shell.notebook .agent-trace-list li[data-status='failed']::after {
+  background: var(--nb-laterite);
+  box-shadow: 0 0 0 1px var(--nb-laterite);
+}
+
+.ai-shell.notebook .agent-trace-list b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-shell.notebook .agent-trace-list p {
+  margin: 1px 0 0;
+  color: var(--nb-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ai-shell.notebook .agent-trace-list .ui-status {
+  font-size: 12px;
+}
+
+.ai-shell.notebook .field-log-footer {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--nb-rule);
+  color: var(--nb-muted);
+  font-size: 12.5px;
+}
+
+.ai-shell.notebook .agent-placeholder,
+.ai-shell.notebook .empty-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--nb-muted);
+  font-size: 14px;
+}
+
+.ai-shell.notebook .agent-placeholder svg,
+.ai-shell.notebook .empty-box svg {
+  flex: none;
+  width: 20px;
+  color: var(--nb-leaf);
+}
+
+/* Responsive ---------------------------------------------------------- */
+
+@media (max-width: 1360px) {
+  .ai-shell.notebook {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .ai-shell.notebook .ai-workbench {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.78fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .ai-shell.notebook .ai-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-shell.notebook .ai-evidence-column {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .ai-shell.notebook {
+    display: block;
+  }
+
+  .ai-shell.notebook .ai-history-panel {
+    position: static;
+    margin-bottom: 14px;
+  }
+
+  .ai-shell.notebook .ai-history-list {
+    max-height: 180px;
+  }
+
+  .ai-shell.notebook .ai-context-selector,
+  .ai-shell.notebook .ai-evidence-column {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-shell.notebook .ai-chat-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .ai-shell.notebook .ai-mode-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-shell.notebook .ai-mode-description {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ai-shell.notebook .ai-chat-card > .ui-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .ai-shell.notebook .ai-message-list {
+    padding-left: 40px;
+    background-position: -6px 0, 0 0, 0 0;
+  }
+
+  .ai-shell.notebook .ai-msg.user {
+    max-width: 92%;
+  }
+
+  .ai-shell.notebook .ai-composer textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .ai-shell.notebook .ai-report-ready {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .ai-shell.notebook .ai-report-ready > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-shell.notebook .ai-thinking i {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .ai-shell.notebook .ai-message-list {
+    scroll-behavior: auto;
+  }
+}
+
+/* Neutralise older layers that still reach these elements ------------------ */
+
+.ai-shell.notebook .ai-context-selector {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.ai-shell.notebook .ai-context-selector label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.ai-shell.notebook .ai-context-strip {
+  grid-template-columns: 1fr;
+  grid-template-areas: none;
+  text-align: left;
+}
+
+.ai-shell.notebook .ai-context-strip > * {
+  grid-area: auto;
+}
+
+.ai-shell.notebook .ai-msg.assistant > div {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ai-shell.notebook .source-evidence-list > div {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.ai-shell.notebook .source-evidence-list b {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.ai-shell.notebook .decision-result details {
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--nb-rule);
+  border-radius: 0;
+  background: none;
+}
+
+.ai-shell.notebook .counterfactual b {
+  color: var(--nb-ink);
+}
+
+.ai-shell.notebook .decision-head {
+  padding: 0;
+  border: 0;
+}
+
+.ai-shell.notebook .ai-context-strip > * {
+  justify-self: start;
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .ai-shell.notebook .ai-history-list {
+    max-height: 132px;
+  }
+
+  .ai-shell.notebook .ai-memory-note {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .ai-shell.notebook .ai-composer textarea::placeholder {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ai-shell.notebook .ai-msg.assistant .ai-message-text {
+    font-size: 16px;
+    line-height: 1.65;
+  }
+}

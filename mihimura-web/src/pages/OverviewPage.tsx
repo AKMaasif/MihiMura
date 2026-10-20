@@ -87,6 +87,8 @@ const legendByLayer: Record<MapLayer, { label: string; range: string; level: Ris
 
 const riskClass = (risk: RiskLevel) => risk.toLowerCase().replaceAll(' ', '-');
 
+const signed = (value: number, unit = '') => `${value >= 0 ? '↑' : '↓'} ${Math.abs(value)}${unit}`;
+
 export default function OverviewPage() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [selectedProvince, setSelectedProvince] = useState('Eastern');
@@ -241,7 +243,11 @@ export default function OverviewPage() {
             <div>
               <small>Data status</small>
               <strong>
-                {dashboard._connection === 'backend' ? 'Backend connected' : 'Demo fallback active'}
+                {dashboard.live
+                  ? 'Live weather data'
+                  : dashboard._connection === 'backend'
+                    ? 'Baseline (live data unavailable)'
+                    : 'Offline demo data'}
               </strong>
             </div>
           </div>
@@ -323,49 +329,44 @@ export default function OverviewPage() {
 
           <section className="kpi-grid" aria-label="National key performance indicators">
             <KpiCard
-              label="National crop health"
-              value={`${dashboard.summary.cropHealth}%`}
-              trend={`↑ ${dashboard.summary.cropHealthChange}%`}
-              note="Weighted health score across monitored crop area"
+              label="National crop condition"
+              value={`${dashboard.summary.cropHealth}/100`}
+              trend={signed(dashboard.summary.cropHealthChange, ' pts')}
+              note="Average weather-derived crop condition index across provinces"
               tone="green"
               icon={Sprout}
-              sparkline={[57, 59, 58, 61, 62, 63, 64]}
             />
             <KpiCard
               label="Agricultural area at risk"
               value={`${dashboard.summary.atRiskArea} ac`}
-              trend={`+${dashboard.summary.newlyAtRiskArea} ac today`}
-              note="Area currently requiring inspection or action"
+              trend={`+${dashboard.summary.newlyAtRiskArea} ac worsening`}
+              note="Estimated monitored area needing inspection or action"
               tone="orange"
               icon={ShieldAlert}
-              sparkline={[72, 78, 83, 91, 96, 109, 124]}
             />
             <KpiCard
-              label="Water deficit"
-              value={`${dashboard.summary.waterDeficit}%`}
-              trend={`${dashboard.summary.irrigationNeed.toLocaleString()} L`}
-              note="Estimated irrigation required during the next 48 hours"
+              label="Water stress"
+              value={`${dashboard.summary.waterDeficit}/100`}
+              trend={`${Number(dashboard.summary.irrigationNeed || 0).toLocaleString()} L/day`}
+              note="Topsoil moisture and rain versus evaporation; litres are an estimate for at-risk area"
               tone="blue"
               icon={Droplets}
-              sparkline={[13, 14, 13, 16, 17, 19, 18]}
             />
             <KpiCard
               label="Active climate threats"
               value={`${dashboard.summary.activeThreats}`}
               trend={`${dashboard.summary.criticalThreats} critical`}
-              note="Combined drought, rainfall, heat and pest signals"
+              note="Heavy rain, strong wind, heat, dry soil and pest-pressure alerts"
               tone="red"
               icon={Radar}
-              sparkline={[8, 9, 11, 10, 13, 15, 17]}
             />
             <KpiCard
-              label="Estimated yield protected"
-              value={`${dashboard.summary.yieldProtected} t`}
-              trend={`↑ ${dashboard.summary.yieldProtectedChange} t`}
-              note="Projected impact of verified interventions"
+              label="Provinces needing action"
+              value={`${dashboard.summary.provincesNeedingAction ?? 0} / 9`}
+              trend={dashboard.live ? 'Live' : 'Baseline'}
+              note="Provinces with a crop condition index below 60"
               tone="purple"
               icon={Wheat}
-              sparkline={[7.2, 8.1, 9.4, 10.3, 11.7, 13.1, 14.8]}
             />
           </section>
 
@@ -415,6 +416,11 @@ export default function OverviewPage() {
                   activeLayer={activeLayer}
                   provinces={provinces}
                   onSelectProvince={setSelectedProvince}
+                  sourceNote={
+                    dashboard.live
+                      ? `Live · updated ${new Date(dashboard.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Baseline · live data unavailable'
+                  }
                 />
 
                 <div className="map-legend">
@@ -464,7 +470,11 @@ export default function OverviewPage() {
                   <CloudRain size={18} />
                   <span>Rainfall · 7d</span>
                   <strong>{selectedData.rainfall7d} mm</strong>
-                  <small>{selectedData.rainfallAvgDiff}% vs average</small>
+                  <small>
+                    {selectedData.rainfallAvgDiff === null || selectedData.rainfallAvgDiff === undefined
+                      ? 'No average available'
+                      : `${signed(selectedData.rainfallAvgDiff, '%')} vs 30-year average`}
+                  </small>
                 </div>
                 <div className="metric-box">
                   <Leaf size={18} />
@@ -485,10 +495,10 @@ export default function OverviewPage() {
                     <Droplets size={17} />
                     <span>Soil moisture</span>
                   </div>
-                  <strong>{selectedData.soilMoisture}%</strong>
+                  <strong>{selectedData.soilMoisture ?? '—'}%</strong>
                 </div>
                 <div className="moisture-scale">
-                  <span className="moisture-current" style={{ left: `${selectedData.soilMoisture}%` }} />
+                  <span className="moisture-current" style={{ left: `${selectedData.soilMoisture ?? 0}%` }} />
                   <span className="moisture-optimal" />
                 </div>
                 <div className="moisture-labels">
