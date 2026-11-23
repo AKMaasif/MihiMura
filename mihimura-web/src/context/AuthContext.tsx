@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 
 import { platformApi } from '../services/platformApi';
@@ -16,6 +16,7 @@ type AuthContextValue = {
   user: SessionUser | null;
   profile: any;
   loading: boolean;
+  profileError: string;
   supabaseConfigured: boolean;
   loginEmail: (email: string, password: string) => Promise<any>;
   registerEmail: (name: string, email: string, password: string, role?: string) => Promise<any>;
@@ -51,40 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [profileError, setProfileError] = useState('');
+  const sessionRevision = useRef(0);
+  const currentUid = useRef<string | null>(null);
+
   const refreshProfile = async () => {
-    const latest = await platformApi.me();
-    setProfile(latest);
-    return latest;
-  };
-
-  const applySession = async (session: Session | null) => {
-    if (!session?.user) {
-      const rawDemo = localStorage.getItem(DEMO_KEY);
-      if (rawDemo) {
-        try {
-          const demo = JSON.parse(rawDemo);
-          setUser(demo);
-          const latest = await platformApi.me();
-          setProfile(latest);
-          return;
-        } catch (error) {
-          console.error('[AUTH] Demo session failed:', error);
-          localStorage.removeItem(DEMO_KEY);
-        }
-      }
-      setUser(null);
-      setProfile(null);
-      return;
-    }
-
-    localStorage.removeItem(DEMO_KEY);
-    setUser(mapUser(session.user));
+    const revision = sessionRevision.current;
     try {
       const latest = await platformApi.me();
-      setProfile(latest);
+      if (revision === sessionRevision.current) {
+        setProfile(latest);
+        setProfileError('');
+      }
+      return latest;
     } catch (error) {
-      console.error('[AUTH] Supabase session is valid but backend profile loading failed:', error);
-      setProfile(null);
+      if (revision === sessionRevision.current) {
+        setProfileError(error instanceof Error ? error.message : 'Your profile could not be loaded.');
+      }
       throw error;
     }
   };
@@ -92,44 +76,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
 
-    const initialize = async () => {
-      setLoading(true);
-      try {
-        if (supabase && supabaseConfigured) {
-          const { data, error } = await supabase.auth.getSession();
-          if (error) throw error;
-          if (alive) await applySession(data.session);
-        } else if (alive) {
-          await applySession(null);
+    const applySession = async (session: Session | null) => {
+      if (!alive) return;
+      const revision = ++sessionRevision.current;
+      let identity = session?.user ? mapUser(session.user) : null;
+      if (identity) {
+        localStorage.removeItem(DEMO_KEY);
+      } else if (localStorage.getItem(DEMO_KEY)) {
+        try {
+          const demo = JSON.parse(localStorage.getItem(DEMO_KEY) || '{}');
+          if (demo.uid === DEMO_UID && demo.provider === 'demo') identity = demo;
+        } catch {
+          localStorage.removeItem(DEMO_KEY);
         }
-      } catch (error) {
-        console.error('[AUTH] Initialization failed:', error);
+      }
+      currentUid.current = identity?.uid ?? null;
+      setUser(identity);
+      setProfile(null);
+      setProfileError('');
+      setLoading(Boolean(identity));
+      try {
+        if (identity) await refreshProfile();
+      } catch {
+        // The sign-in screen offers a profile retry.
       } finally {
-        if (alive) setLoading(false);
+        if (alive && revision === sessionRevision.current) setLoading(false);
       }
     };
 
-    void initialize();
-
-    if (!supabase)
-      return () => {
-        alive = false;
-      };
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+    const subscription = supabase?.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') sessionStorage.setItem('mihimura_password_recovery', '1');
-      // Defer backend calls outside the auth callback itself.
+      // Schedule outside the auth callback because profile requests read the Supabase session.
       window.setTimeout(() => {
-        if (!alive) return;
-        setLoading(true);
-        void applySession(session)
-          .catch((error) => console.error('[AUTH] Session update failed:', error))
-          .finally(() => alive && setLoading(false));
+        if (event !== 'PASSWORD_RECOVERY' && session?.user.id === currentUid.current) return;
+        void applySession(session);
       }, 0);
     });
+    if (!supabase) void applySession(null);
 
     return () => {
       alive = false;
-      subscription.subscription.unsubscribe();
+      sessionRevision.current++;
+      subscription?.data.subscription.unsubscribe();
     };
   }, []);
 
@@ -214,15 +202,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'demo',
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(demo));
-    setUser(demo);
-    const latest = await platformApi.me();
-    setProfile(latest);
-    return latest;
+    try {
+      const latest = await platformApi.me();
+      currentUid.current = demo.uid;
+      setUser(demo);
+      setProfile(latest);
+      setProfileError('');
+      return latest;
+    } catch (error) {
+      localStorage.removeItem(DEMO_KEY);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    if (supabase) await supabase.auth.signOut().catch(() => undefined);
     localStorage.removeItem(DEMO_KEY);
+    sessionStorage.removeItem('mihimura_pending_identity');
+    if (supabase && currentUid.current !== DEMO_UID) {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    }
+    sessionRevision.current++;
+    currentUid.current = null;
+    setLoading(false);
+    setProfileError('');
     setUser(null);
     setProfile(null);
   };
@@ -252,6 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       loading,
+      profileError,
       supabaseConfigured,
       loginEmail,
       registerEmail,
@@ -265,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeOnboarding,
       refreshProfile,
     }),
-    [user, profile, loading],
+    [user, profile, loading, profileError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

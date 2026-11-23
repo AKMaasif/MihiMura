@@ -42,7 +42,7 @@ function GoogleIcon() {
 }
 
 const steps = ['Identity', 'Contact', 'Security', 'Ready'];
-const demoEnabled = import.meta.env.VITE_DEMO_AUTH !== 'false';
+const demoEnabled = import.meta.env.VITE_DEMO_AUTH === 'true';
 // Guided email/phone login and registration are intentionally disabled for now.
 // Set VITE_GUIDED_AUTH_ENABLED=true later when those flows are ready to reopen.
 const guidedAccessEnabled = import.meta.env.VITE_GUIDED_AUTH_ENABLED === 'true';
@@ -52,6 +52,9 @@ export default function AuthExperience() {
   const {
     user,
     profile,
+    profileError,
+    refreshProfile,
+    logout,
     loginEmail,
     registerEmail,
     loginGoogle,
@@ -77,7 +80,12 @@ export default function AuthExperience() {
   const [step, setStep] = useState(0);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    return query.get('error') || query.get('error_code')
+      ? 'Google sign-in did not finish. Try again or check the configured redirect URL.'
+      : '';
+  });
   const [info, setInfo] = useState('');
   const [data, setData] = useState({ name: '', email: '', password: '', role: 'farmer' });
   const [newPassword, setNewPassword] = useState('');
@@ -101,6 +109,14 @@ export default function AuthExperience() {
     // or a manually edited URL attempts to open login/register directly.
     if (!guidedAccessEnabled && (mode === 'login' || mode === 'register')) setMode('choice');
   }, [mode]);
+
+  useEffect(() => {
+    const current = new URL(window.location.href);
+    if (!current.searchParams.has('error') && !current.searchParams.has('error_code')) return;
+    for (const key of ['error', 'error_code', 'error_description', 'flow']) current.searchParams.delete(key);
+    window.history.replaceState(window.history.state, '', current);
+    sessionStorage.removeItem('mihimura_pending_identity');
+  }, []);
 
   const canNext = useMemo(
     () =>
@@ -341,7 +357,18 @@ export default function AuthExperience() {
                 Explore with a safe demo farmer
               </button>
             )}
-            {error && <p className="auth-error">{error}</p>}
+            {(error || profileError) && <p className="auth-error" role="alert">{error || profileError}</p>}
+            {user && !profile && profileError && (
+              <div>
+                <button type="button" disabled={busy} onClick={async () => {
+                  setBusy(true);
+                  setError('');
+                  try { await refreshProfile(); } catch { /* profileError is shown above */ }
+                  finally { setBusy(false); }
+                }}>Retry profile</button>
+                <button type="button" onClick={() => void logout().catch((e: Error) => setError(e.message))}>Sign out</button>
+              </div>
+            )}
           </div>
         )}
 

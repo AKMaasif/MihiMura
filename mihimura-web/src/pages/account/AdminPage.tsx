@@ -194,9 +194,9 @@ export function AdminPage() {
           icon={Activity}
         />
         <Metric
-          label="Gemini"
-          value={health?.ai_configured ? 'Configured' : 'Demo fallback'}
-          note="reasoning + multilingual embeddings"
+          label="AI providers"
+          value={health?.ai_providers?.join(', ') || 'Rules-based fallback'}
+          note="Configured generation providers"
           icon={Bot}
           tone={health?.ai_configured ? 'green' : 'orange'}
         />
@@ -260,7 +260,8 @@ export function AdminPage() {
             {[
               ['Open-Meteo', 'Forecast', 'No key', 'live'],
               ['NASA POWER', 'Climate baseline', 'No key', 'live'],
-              ['Gemini', 'Text + image reasoning', 'API key', 'optional'],
+              ['xAI / Meta', 'Text and configured vision models', 'API key + model ID', 'optional'],
+              ['Gemini', 'Optional generation, vector indexing and server speech', 'API key', 'optional'],
               ['Supabase', 'Auth + PostgreSQL + Storage', 'URL + publishable/secret keys', 'core'],
               ['Copernicus Sentinel Hub', 'Satellite catalogue', 'OAuth client', 'optional'],
               [

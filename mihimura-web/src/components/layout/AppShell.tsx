@@ -371,8 +371,12 @@ export default function AppShell() {
           </button>
           <button
             onClick={async () => {
-              await logout();
-              navigate('/welcome');
+              try {
+                await logout();
+                navigate('/welcome');
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : 'Sign-out failed. Try again.');
+              }
             }}
           >
             <LogOut />

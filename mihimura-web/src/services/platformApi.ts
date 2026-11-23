@@ -1,7 +1,7 @@
 import type { ProvinceSituation } from '../data/mockApi';
 import { supabase, supabaseConfigured } from './supabase';
 
-const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+const BASE = import.meta.env.VITE_API_URL || '/api/v1';
 const DEMO_KEY = 'mihimura_demo_session';
 
 async function headers(json = true): Promise<Record<string, string>> {
@@ -48,22 +48,41 @@ async function errorMessage(response: Response): Promise<string> {
   }
 }
 
-async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      ...(await headers(!(options.body instanceof FormData))),
-      ...(options.headers || {}),
-    },
-  });
+export class ApiError extends Error {
+  readonly status?: number;
 
-  if (!response.ok) {
-    throw new Error((await errorMessage(response)) || `Request failed: ${response.status}`);
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
   }
+}
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) return response.json();
-  return (await response.text()) as T;
+async function request<T = any>(
+  path: string,
+  options: RequestInit = {},
+  responseType: 'auto' | 'blob' = 'auto',
+  timeoutMs = 30_000,
+): Promise<T> {
+  const requestHeaders = new Headers(await headers(!(options.body instanceof FormData)));
+  new Headers(options.headers).forEach((value, key) => requestHeaders.set(key, value));
+  const deadline = AbortSignal.timeout(timeoutMs);
+  const signal = options.signal ? AbortSignal.any([options.signal, deadline]) : deadline;
+  try {
+    const response = await fetch(`${BASE}${path}`, { ...options, headers: requestHeaders, signal });
+    if (!response.ok) {
+      throw new ApiError((await errorMessage(response)) || `Request failed: ${response.status}`, response.status);
+    }
+    if (responseType === 'blob') return (await response.blob()) as T;
+    if (response.status === 204) return undefined as T;
+    if (response.headers.get('content-type')?.includes('application/json')) return await response.json();
+    throw new ApiError('The API returned an unexpected response. Check the API URL or reverse proxy.', response.status);
+  } catch (error) {
+    if (deadline.aborted) throw new ApiError('The server took too long to respond. Check the operation before retrying.');
+    if (options.signal?.aborted || error instanceof ApiError) throw error;
+    if (error instanceof SyntaxError) throw new ApiError('The server returned an unreadable response.');
+    throw new ApiError('Could not reach MihiMura. Check your connection and try again.');
+  }
 }
 
 export const platformApi = {
@@ -169,17 +188,12 @@ export const platformApi = {
 
   voiceSessionToken: (data: { language: string; project_id?: string }) =>
     request('/voice/session-token', { method: 'POST', body: JSON.stringify(data) }),
-  voiceTts: async (text: string, language: string) => {
-    const response = await fetch(`${BASE}/voice/tts`, {
+  voiceTts: (text: string, language: string, signal?: AbortSignal) =>
+    request<Blob>('/voice/tts', {
       method: 'POST',
-      headers: await headers(true),
       body: JSON.stringify({ text, language }),
-    });
-    if (!response.ok) {
-      throw new Error((await errorMessage(response)) || `Voice TTS request failed: ${response.status}`);
-    }
-    return response.blob();
-  },
+      signal,
+    }, 'blob'),
 
   ask: (
     question: string,
@@ -189,9 +203,11 @@ export const platformApi = {
     mode: 'auto' | 'simple_chat' | 'decision_support' | 'full_report' = 'auto',
     allow_mode_mismatch = false,
     resume_route = false,
+    signal?: AbortSignal,
   ) =>
     request('/ask-ai', {
       method: 'POST',
+      signal,
       body: JSON.stringify({
         question,
         context,
@@ -201,7 +217,7 @@ export const platformApi = {
         allow_mode_mismatch,
         resume_route,
       }),
-    }),
+    }, 'auto', 180_000),
 
   reports: () => request<any[]>('/reports'),
   generateConversationReport: (conversationId: string) =>

@@ -64,6 +64,13 @@ export function SettingsPage() {
       setNotice(e.message);
     }
   };
+  const signOut = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Sign-out failed. Try again.');
+    }
+  };
   const requestDelete = async () => {
     if (
       !window.confirm(
@@ -73,7 +80,7 @@ export function SettingsPage() {
       return;
     await platformApi.requestAccountDeletion();
     setNotice('Deletion request recorded. You are being signed out.');
-    setTimeout(() => void logout(), 700);
+    setTimeout(() => void signOut(), 700);
   };
   return (
     <>
@@ -257,7 +264,7 @@ export function SettingsPage() {
             <Button variant="secondary" onClick={() => void exportData()}>
               <Download /> Download my data
             </Button>
-            <Button variant="secondary" onClick={() => void logout()}>
+            <Button variant="secondary" onClick={() => void signOut()}>
               Sign out all current browser access
             </Button>
             <Button variant="danger" onClick={() => void requestDelete()}>

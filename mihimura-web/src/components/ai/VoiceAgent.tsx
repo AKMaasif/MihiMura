@@ -10,7 +10,6 @@ import {
   PhoneOff,
   Radio,
   ShieldCheck,
-  Sparkles,
   Volume2,
   Wifi,
   WifiOff,
@@ -94,7 +93,9 @@ export function VoiceAgent({
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState('');
-  const [voiceName] = useState('Algenib');
+  const serverSpeech = useRef(false);
+  const sessionRequest = useRef<AbortController | null>(null);
+  const finishPlayback = useRef<(() => void) | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [liveUser, setLiveUser] = useState('');
   const [liveAssistant, setLiveAssistant] = useState('');
@@ -169,6 +170,10 @@ export function VoiceAgent({
     const recognition = recognitionRef.current;
     recognitionRef.current = null;
     if (!recognition) return;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onresult = null;
+    recognition.onstart = null;
     try {
       if (abort) recognition.abort();
       else recognition.stop();
@@ -178,6 +183,9 @@ export function VoiceAgent({
   };
 
   const stopPlayback = () => {
+    const finish = finishPlayback.current;
+    finishPlayback.current = null;
+    finish?.();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     if (audioRef.current) {
       try {
@@ -201,7 +209,9 @@ export function VoiceAgent({
       audioUrlRef.current = url;
       audioRef.current = audio;
 
+      finishPlayback.current = resolve;
       const cleanup = () => {
+        if (finishPlayback.current === resolve) finishPlayback.current = null;
         if (audioRef.current === audio) audioRef.current = null;
         if (audioUrlRef.current === url) {
           URL.revokeObjectURL(url);
@@ -233,23 +243,33 @@ export function VoiceAgent({
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'Sinhala' ? 'si-LK' : language === 'Tamil' ? 'ta-LK' : 'en-LK';
       utterance.rate = 1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
+      const finish = () => {
+        window.clearTimeout(timeout);
+        if (finishPlayback.current === finish) finishPlayback.current = null;
+        resolve();
+      };
+      const timeout = window.setTimeout(() => {
+        window.speechSynthesis.cancel();
+        finish();
+      }, 45_000);
+      finishPlayback.current = finish;
+      utterance.onend = finish;
+      utterance.onerror = finish;
       window.speechSynthesis.speak(utterance);
     });
 
-  const speakText = async (text: string) => {
-    if (!text.trim()) return;
-    console.log('[VOICE] Requesting Gemini TTS');
-    try {
-      const blob = await platformApi.voiceTts(text, language);
-      console.log('[VOICE] Gemini TTS audio received', { bytes: blob.size, type: blob.type });
-      await playBlob(blob);
-      console.log('[VOICE] Gemini TTS playback completed');
-    } catch (exc) {
-      console.warn('[VOICE] Gemini TTS failed; using browser speech fallback', exc);
-      await speakWithBrowserFallback(text);
+  const speakText = async (text: string, signal: AbortSignal) => {
+    if (!text.trim() || signal.aborted) return;
+    if (serverSpeech.current) {
+      try {
+        const blob = await platformApi.voiceTts(text, language, signal);
+        if (!signal.aborted && !mutedRef.current) await playBlob(blob);
+        return;
+      } catch {
+        // Browser playback is available even when server speech is unreachable.
+      }
     }
+    if (!signal.aborted && !mutedRef.current) await speakWithBrowserFallback(text);
   };
 
   const startListening = () => {
@@ -331,7 +351,7 @@ export function VoiceAgent({
       clearSilenceTimer();
       if (recognitionRef.current === recognition) recognitionRef.current = null;
       const question = finalTranscript.trim();
-      console.log('[VOICE] SpeechRecognition ended', { hasQuestion: Boolean(question), question });
+
 
       if (!sessionActiveRef.current || mutedRef.current) return;
 
@@ -353,12 +373,18 @@ export function VoiceAgent({
         );
         setStatus('error');
         setSessionActive(false);
+        setSessionStartedAt(null);
         sessionActiveRef.current = false;
         return;
       }
 
       if (event.error === 'network') {
-        setError('Browser speech recognition reported a network error. Check the connection and try again.');
+        sessionActiveRef.current = false;
+        setSessionActive(false);
+        setSessionStartedAt(null);
+        setStatus('error');
+        setError('Speech recognition lost its connection. Restart voice or continue typing.');
+        return;
       } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
         setError(`Voice recognition error: ${event.error || 'unknown error'}`);
       }
@@ -377,6 +403,9 @@ export function VoiceAgent({
         'Could not start browser speech recognition. Try Chrome or Edge and check microphone permission.',
       );
       setStatus('error');
+      sessionActiveRef.current = false;
+      setSessionActive(false);
+      setSessionStartedAt(null);
     }
   };
 
@@ -387,7 +416,11 @@ export function VoiceAgent({
     finalizeUser(question);
     setError('');
     setStatus('tool');
-    console.log('[VOICE] Sending question to existing MihiMura /ask-ai:', question);
+    const signal = sessionRequest.current?.signal;
+    if (!signal || signal.aborted) {
+      processingRef.current = false;
+      return;
+    }
 
     try {
       const result = await platformApi.ask(
@@ -396,7 +429,11 @@ export function VoiceAgent({
         conversationId,
         {},
         mode,
+        false,
+        false,
+        signal,
       );
+      if (signal.aborted) return;
       console.log('[VOICE] MihiMura /ask-ai completed', {
         provider: result?.provider,
         confidence: result?.confidence,
@@ -409,23 +446,25 @@ export function VoiceAgent({
       liveAssistantRef.current = answer;
       setLiveAssistant(answer);
       setStatus('speaking');
-      await speakText(answer);
-      finalizeAssistant(answer);
+      await speakText(answer, signal);
+      if (!signal.aborted) finalizeAssistant(answer);
     } catch (exc) {
-      console.error('[VOICE] MihiMura voice question failed', exc);
+      if (signal.aborted) return;
       const message = exc instanceof Error ? exc.message : 'Could not reach the AI service';
       setError(message);
       const spoken = errorSpeechFor(language);
       liveAssistantRef.current = spoken;
       setLiveAssistant(spoken);
       setStatus('speaking');
-      await speakWithBrowserFallback(spoken);
-      finalizeAssistant(spoken);
+      if (!mutedRef.current) await speakWithBrowserFallback(spoken);
+      if (!signal.aborted) finalizeAssistant(spoken);
     } finally {
-      processingRef.current = false;
-      if (sessionActiveRef.current && !mutedRef.current) {
-        setStatus('listening');
-        window.setTimeout(() => startListening(), 400);
+      if (!signal.aborted) {
+        processingRef.current = false;
+        if (sessionActiveRef.current && !mutedRef.current) {
+          setStatus('listening');
+          window.setTimeout(() => { if (!signal.aborted) startListening(); }, 400);
+        }
       }
     }
   };
@@ -446,7 +485,9 @@ export function VoiceAgent({
       return;
     }
 
-    console.log('[VOICE] Starting reference-style voice mode (Browser STT → /ask-ai → Gemini TTS)');
+    const controller = new AbortController();
+    sessionRequest.current?.abort();
+    sessionRequest.current = controller;
     setOpen(true);
     setError('');
     setSessionActive(true);
@@ -457,11 +498,17 @@ export function VoiceAgent({
     mutedRef.current = false;
     setMuted(false);
 
+    serverSpeech.current = false;
+    void platformApi.health().then((health) => {
+      if (!controller.signal.aborted) serverSpeech.current = health?.voice_tts_configured === true;
+    }).catch(() => undefined);
+
     const greeting = greetingFor(language);
     liveAssistantRef.current = greeting;
     setLiveAssistant(greeting);
     setStatus('speaking');
-    await speakText(greeting);
+    await speakText(greeting, controller.signal);
+    if (controller.signal.aborted) return;
     finalizeAssistant(greeting);
 
     if (sessionActiveRef.current && !mutedRef.current) {
@@ -471,7 +518,7 @@ export function VoiceAgent({
   };
 
   const endSession = async (closePanel = false) => {
-    console.log('[VOICE] Ending voice session');
+    sessionRequest.current?.abort();
     sessionActiveRef.current = false;
     setSessionActive(false);
     processingRef.current = false;
@@ -493,6 +540,7 @@ export function VoiceAgent({
 
     if (next) {
       stopRecognition(true);
+      stopPlayback();
     } else if (sessionActiveRef.current && !processingRef.current) {
       setStatus('listening');
       startListening();
@@ -501,6 +549,7 @@ export function VoiceAgent({
 
   useEffect(
     () => () => {
+      sessionRequest.current?.abort();
       sessionActiveRef.current = false;
       stopRecognition(true);
       stopPlayback();
@@ -534,7 +583,7 @@ export function VoiceAgent({
         </span>
         <div>
           <b>Voice conversation</b>
-          <small>Hands-free · Gemini TTS · {language}</small>
+          <small>Grounded answers · {language}</small>
         </div>
       </button>
 
@@ -587,7 +636,7 @@ export function VoiceAgent({
                 <p>{contextLabel}</p>
                 <div className="voice-session-meta">
                   <span>
-                    <Radio /> {voiceName}
+                    <Radio /> Audio playback
                   </span>
                   <span>
                     <Headphones /> {language}

@@ -4,7 +4,8 @@ export async function fetchDashboard() {
   try {
     const payload = await platformApi.dashboard();
     return { ...payload, _connection: 'backend' };
-  } catch {
+  } catch (error) {
+    if (import.meta.env.VITE_DEMO_AUTH !== 'true') throw error;
     return import('../data/mockApi').then((m) => ({
       generatedAt: new Date().toISOString(),
       source: 'demo',

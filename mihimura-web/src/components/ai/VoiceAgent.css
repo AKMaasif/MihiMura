@@ -6,3 +6,21 @@
 .voice-transcript{flex:1;min-height:170px;margin:0 16px 14px;padding:12px;overflow:auto;border:1px solid #e1e9e2;border-radius:14px;background:white}.voice-transcript-empty{height:100%;min-height:150px;display:grid;place-items:center;align-content:center;text-align:center;color:#7c8980}.voice-transcript-empty svg{width:25px;color:#80a889;margin-bottom:6px}.voice-transcript-empty b{font-size:9px;color:#4a5a50}.voice-transcript-empty p{max-width:330px;margin:4px 0 0;font-size:8px;line-height:1.55}.voice-line{max-width:82%;margin-bottom:10px;padding:9px 11px;border-radius:11px;background:#f3f6f3}.voice-line span{display:block;color:#78847b;font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.voice-line p{margin:3px 0 0;color:#33453a;font-size:9px;line-height:1.5}.voice-line.user{margin-left:auto;background:#1f6d3d}.voice-line.user span,.voice-line.user p{color:white}.voice-line.user span{opacity:.72}.voice-line.assistant{border:1px solid #e2e9e3;background:#fbfdfb}.voice-line.live{box-shadow:0 0 0 2px rgba(60,130,78,.06)}
 .voice-controls{min-height:78px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:12px;border-top:1px solid #dde7de;background:white}.voice-control,.voice-end{border:0;cursor:pointer}.voice-control{width:62px;height:54px;display:grid;place-items:center;align-content:center;gap:2px;border:1px solid #dce5dd;border-radius:14px;background:#f8faf8;color:#516158}.voice-control svg{width:18px}.voice-control span{font-size:7px;font-weight:800}.voice-control.danger{color:#b14640;background:#fff2f1;border-color:#efd0ce}.voice-end{width:70px;height:54px;display:grid;place-items:center;align-content:center;gap:2px;border-radius:14px;background:#be4e48;color:white}.voice-end svg{width:18px}.voice-end span{font-size:7px;font-weight:800}
 @media(max-width:620px){.voice-modal-backdrop{padding:0}.voice-modal{width:100%;height:100dvh;border:0;border-radius:0}.voice-modal-head{height:64px;padding:0 13px}.voice-orb-zone{padding:18px 12px 12px}.voice-orb{width:92px;height:92px}.voice-orb>div{width:62px;height:62px}.voice-tool-strip,.voice-transcript,.voice-error{margin-left:11px;margin-right:11px}.voice-transcript{margin-bottom:10px}.voice-line{max-width:92%}.voice-controls{min-height:72px}.voice-live-pill{display:none}}
+
+.voice-line p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.voice-modal button:focus-visible {
+  outline: 2px solid #195c36;
+  outline-offset: 2px;
+}
+
+@media (max-width: 620px) {
+  .voice-head-actions > button {
+    width: 44px;
+    height: 44px;
+  }
+}

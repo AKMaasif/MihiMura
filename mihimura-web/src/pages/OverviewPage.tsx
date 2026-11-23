@@ -91,6 +91,8 @@ const signed = (value: number, unit = '') => `${value >= 0 ? '↑' : '↓'} ${Ma
 
 export default function OverviewPage() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
   const [selectedProvince, setSelectedProvince] = useState('Eastern');
   const [activeLayer, setActiveLayer] = useState<MapLayer>('cropHealth');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,11 +102,13 @@ export default function OverviewPage() {
     let active = true;
     void fetchDashboard().then((payload) => {
       if (active) setDashboard(payload);
+    }).catch((error: Error) => {
+      if (active) setLoadError(error.message);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reload]);
 
   const provinces: Record<string, ProvinceData> = (dashboard?.provinces ?? {}) as Record<
     string,
@@ -121,6 +125,17 @@ export default function OverviewPage() {
 
     return [...items].sort((a, b) => a.healthScore - b.healthScore);
   }, [provinceSort, provinces]);
+
+  if (loadError) {
+    return (
+      <div className="loading-screen">
+        <p role="alert">{loadError}</p>
+        <button type="button" onClick={() => { setLoadError(''); setReload((value) => value + 1); }}>
+          Retry loading conditions
+        </button>
+      </div>
+    );
+  }
 
   if (!dashboard || !selectedData) {
     return (

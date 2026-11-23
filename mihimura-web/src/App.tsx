@@ -42,7 +42,7 @@ import './index.css';
 function Protected({ children }: { children: ReactNode }) {
   const { user, profile, loading } = useAuth();
   if (loading) return <BootSplash />;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user || !profile) return <Navigate to="/auth" replace />;
   if (!profile?.onboarding_complete) return <Navigate to="/onboarding" replace />;
   return children;
 }
@@ -55,11 +55,10 @@ function RoleGate({
   roles: string[];
   managerAllowed?: boolean;
 }) {
-  const { user, profile } = useAuth();
-  const demo = user?.provider === 'demo';
+  const { profile } = useAuth();
   const role = profile?.role || 'farmer';
   const verified = Boolean(profile?.professional_verified);
-  const allowed = demo || (managerAllowed && role === 'manager') || (verified && roles.includes(role));
+  const allowed = (managerAllowed && role === 'manager') || (verified && roles.includes(role));
   if (allowed) return children;
   return (
     <section className="access-gate">
@@ -81,7 +80,7 @@ function RoleGate({
 function OnboardingGate() {
   const { user, profile, loading } = useAuth();
   if (loading) return <BootSplash />;
-  if (!user) return <Navigate to="/auth?mode=register" replace />;
+  if (!user || !profile) return <Navigate to="/auth" replace />;
   if (profile?.onboarding_complete) return <Navigate to="/app/dashboard" replace />;
   return <OnboardingJourney />;
 }

@@ -39,6 +39,7 @@ export default function OnboardingJourney() {
   })();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [d, setD] = useState<any>({
     name: pending.name || user?.displayName || '',
     role: pending.role || user?.requestedRole || 'farmer',
@@ -66,10 +67,16 @@ export default function OnboardingJourney() {
     );
   const finish = async () => {
     setBusy(true);
-    await completeOnboarding({ ...d, primary_crops_json: d.crops, accessibility_json: d.accessibility });
-    sessionStorage.removeItem('mihimura_pending_identity');
-    setBusy(false);
-    nav('/app/dashboard', { replace: true });
+    setSaveError('');
+    try {
+      await completeOnboarding({ ...d, primary_crops_json: d.crops, accessibility_json: d.accessibility });
+      sessionStorage.removeItem('mihimura_pending_identity');
+      nav('/app/dashboard', { replace: true });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not save your profile.');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="onboarding-shell">
@@ -97,6 +104,7 @@ export default function OnboardingJourney() {
         </div>
       </aside>
       <main className="onboarding-main">
+        {saveError && <p className="auth-error" role="alert">{saveError}</p>}
         <div className="onboard-top">
           <span>
             Step {step + 1} of {stepMeta.length}
