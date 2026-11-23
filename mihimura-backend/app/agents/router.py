@@ -72,6 +72,7 @@ MARKET_DECISION_PHRASES = (
 WEATHER_TERMS = (
     # English
     "weather", "forecast", "rain", "rainfall", "temperature", "humidity", "wind", "flood", "drought", "climate",
+    "kalaguna", "wessa", "vaanilai", "vanilai", "mazhai",
     # Sinhala
     "කාලගුණ", "කාලගුණය", "අනාවැකිය", "වැසි", "වර්ෂාව", "උෂ්ණත්වය", "ආර්ද්‍රතාව", "සුළං", "ගංවතුර", "නියඟ", "දේශගුණ",
     # Tamil
@@ -81,6 +82,7 @@ WEATHER_TERMS = (
 INPUT_TERMS = (
     # English
     "apply fertilizer", "apply fertiliser", "fertilizer", "fertiliser", "urea", "npk", "pesticide", "fungicide", "insecticide", "herbicide", "spray", "dose", "rate",
+    "pohora", "uram",
     # Sinhala
     "පොහොර", "යූරියා", "රසායන", "කෘමිනාශක", "දිලීරනාශක", "වල්නාශක", "ඉසින්න", "මාත්‍රාව", "ප්‍රමාණය",
     # Tamil

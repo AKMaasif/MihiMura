@@ -70,7 +70,21 @@ class OrchestratorAgent:
             )
             out = apply_route(WORKFLOWS[route.effective_mode](turn), route)
         out = finalize_response(out)
-        out["latency_ms"] = round((time.perf_counter() - started) * 1000)
+        elapsed = round((time.perf_counter() - started) * 1000)
+        out["latency_ms"] = elapsed
+        quality = out.get("evidence_quality") if isinstance(out.get("evidence_quality"), dict) else {}
+        agents = [item.get("agent") for item in out.get("agent_trace") or [] if isinstance(item, dict) and item.get("agent")]
+        out["workflow_trace"] = {
+            "route": out.get("effective_mode"),
+            "intent": out.get("detected_intent"),
+            "agents": agents,
+            "tools": list((out.get("tool_runtime") or {}).keys()),
+            "evidence_level": quality.get("level"),
+            "validation": "watch" if quality.get("blocking_issues") else "pass",
+            "outcome": out.get("response_type"),
+            "elapsed_ms": elapsed,
+            "provider": out.get("provider"),
+        }
         return out
 
 

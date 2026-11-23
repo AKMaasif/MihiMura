@@ -62,7 +62,30 @@ def detect_language(text: str, fallback: str = "English") -> LanguageDetection:
     if tamil >= 2 and tamil > sinhala:
         return LanguageDetection("Tamil", 0.83, sinhala, tamil, latin)
 
+    hinted = romanized_language(value)
+    if hinted:
+        return LanguageDetection(hinted, 0.62, sinhala, tamil, latin)
     return LanguageDetection("English", min(0.98, 0.68 + (latin / max(total, 1)) * 0.28), sinhala, tamil, latin)
+
+
+# Whole-word romanized Sinhala/Tamil that farmers type when the keyboard is Latin.
+# Short fragments are intentionally absent so ordinary English is not reclassified.
+_ROMANIZED_MARKERS = {
+    "Sinhala": frozenset({"pohora", "ayubowan", "kalaguna", "goviyek", "kohomada", "wathura", "wessa"}),
+    "Tamil": frozenset({"vaanilai", "vanilai", "mazhai", "vanakkam", "payir", "uram"}),
+}
+
+
+def romanized_language(text: str) -> str | None:
+    tokens = set(re.findall(r"[a-z]+", (text or "").lower()))
+    scores = {lang: len(tokens & words) for lang, words in _ROMANIZED_MARKERS.items()}
+    scores = {lang: score for lang, score in scores.items() if score}
+    if not scores:
+        return None
+    best = max(scores, key=scores.get)
+    if sum(1 for score in scores.values() if score == scores[best]) > 1:
+        return None
+    return best
 
 
 def language_code(language: str) -> str:

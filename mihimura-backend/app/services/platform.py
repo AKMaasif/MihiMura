@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Any
 from uuid import uuid4
 
+from app.core.config import settings
 from app.db import audit, get_user, now_iso
 from app.supabase_client import first, service_client
 
@@ -412,7 +413,9 @@ def create_expert_case(uid: str, p: dict[str, Any]):
 
 
 def _privileged(actor: dict[str, Any], roles: set[str]) -> bool:
-    return actor.get("provider") == "demo" or (actor.get("role") in roles and bool(actor.get("professional_verified")))
+    if actor.get("provider") == "demo":
+        return bool(settings.DEMO_PRIVILEGED)
+    return actor.get("role") in roles and bool(actor.get("professional_verified"))
 
 
 OWNER_CASE_STATUSES = {"open", "closed", "cancelled"}

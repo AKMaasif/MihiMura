@@ -15,6 +15,7 @@ from app.agents.evidence_sources import knowledge_sources
 from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
 from app.agents.prompts import CHAT_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
+from app.agents.safety import enforce, precheck, rates_supported, review_rates
 from app.agents.turn import Turn
 from app.services.language import detect_language, normalize_language
 
@@ -83,12 +84,12 @@ def _attach_rag(out: dict[str, Any], knowledge: dict[str, Any]) -> dict[str, Any
     if retrieval == "hybrid_pgvector_fts" and docs:
         detail = f" from {', '.join(titles[:3])}" if titles else ""
         trace.append(step("Agricultural Knowledge RAG", f"Retrieved {len(docs)} indexed evidence chunk(s){detail}"))
-        if not out.get("sources"):
-            out["sources"] = knowledge_sources(knowledge)
     elif retrieval == "approved_source_registry_fallback":
         trace.append(step("Agricultural Knowledge RAG", "No indexed evidence match was returned; only approved source pointers were available", "watch"))
     elif retrieval != "not_requested":
         trace.append(step("Agricultural Knowledge RAG", f"Knowledge retrieval status: {retrieval}", "watch"))
+    # Drop model-authored citations. Registry rows stay, and they are labeled as pointers rather than retrieved text.
+    out["sources"] = knowledge_sources(knowledge) if retrieval != "not_requested" else []
     out["rag"] = {
         "retrieval": retrieval,
         "document_count": len(docs),
@@ -130,11 +131,30 @@ def run_chat(turn: Turn) -> dict[str, Any]:
             "counterfactual": "A live or consequential farm question may need Decision Support.",
         },
     )
-    out["confidence"] = _CONFIDENCE_GROUNDED if grounded else _CONFIDENCE_GENERAL
+    safety = precheck(turn.question, turn.context)
     out["agent_trace"] = [
         step("Intent Router", f"Kept the request in Simple Chat ({turn.route.intent})"),
         step("Conversation Memory", f"Used {min(len(turn.history), 18)} recent turn(s) and saved scenario facts"),
     ]
+    out = review_rates(out, knowledge, safety)
+    consequential = bool(safety.get("hazardous_or_rate_sensitive") or (safety.get("consequential") and not grounded))
+    if consequential:
+        out = enforce(out, safety)
+    if safety.get("hazardous_or_rate_sensitive") and not rates_supported(knowledge):
+        out["expert_escalation_recommended"] = True
+        if out.get("response_type") == "answer":
+            out["response_type"] = "expert_escalation" if safety.get("expert_threshold") else "confirmation_required"
+    out["confidence"] = _CONFIDENCE_GROUNDED if grounded else _CONFIDENCE_GENERAL
+    if safety.get("hazardous_or_rate_sensitive") and not grounded:
+        out["confidence"] = min(float(out["confidence"]), 0.4)
+    if safety.get("hazardous_or_rate_sensitive") or safety.get("consequential"):
+        out["agent_trace"].append(
+            step(
+                "Intervention & Safety",
+                "Checked this chat answer for unsupported rates before it could be treated as a field instruction",
+                "watch" if consequential else "complete",
+            )
+        )
     out["provider"] = "gemini"
     out["model"] = model_used
     out["prompt_version"] = PROMPT_VERSION

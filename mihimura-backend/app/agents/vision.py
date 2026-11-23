@@ -36,6 +36,17 @@ def demo_diagnosis(crop_hint: str, symptoms: str = "", image_count: int = 1) -> 
 
 
 def _sanitize(result: dict[str, Any], image_count: int) -> dict[str, Any]:
+    illustrative = str(result.get("provider") or "").startswith("demo")
+    if illustrative:
+        result["expert_review"] = True
+        result["crop_confidence"] = min(clamp_confidence(result.get("crop_confidence"), 0.4), 0.55)
+        result["disclaimer"] = (
+            "No crop diagnosis was completed. This is an illustrative placeholder because the vision model "
+            "did not return an analysis. A person should review the photos."
+        )
+        for item in result.get("differential") or []:
+            if isinstance(item, dict):
+                item["confidence"] = min(clamp_confidence(item.get("confidence"), 0.0), 0.49)
     result["crop_confidence"] = clamp_confidence(result.get("crop_confidence"), 0.5)
     differential = sorted(
         ({**d, "confidence": clamp_confidence(d.get("confidence"), 0.0)} for d in result.get("differential") or []),
@@ -55,7 +66,9 @@ def _sanitize(result: dict[str, Any], image_count: int) -> dict[str, Any]:
 
 def analyze_crop_images(images: list[tuple[bytes, str]], crop_hint: str = "", symptoms: str = "", language: str = "English") -> dict[str, Any]:
     if not images:
-        return demo_diagnosis(crop_hint, symptoms, 0)
+        result = demo_diagnosis(crop_hint, symptoms, 0)
+        result["provider"] = "demo"
+        return _sanitize(result, 0)
     payload = {
         "image_count": len(images),
         "crop_hint": crop_hint or "unknown",
@@ -72,12 +85,14 @@ def analyze_crop_images(images: list[tuple[bytes, str]], crop_hint: str = "", sy
             temperature=0.2,
         )
     except LLMUnavailable:
-        return demo_diagnosis(crop_hint, symptoms, len(images))
+        result = demo_diagnosis(crop_hint, symptoms, len(images))
+        result["provider"] = "demo"
+        return _sanitize(result, len(images))
     except LLMError as exc:
         result = demo_diagnosis(crop_hint, symptoms, len(images))
         result["provider"] = "demo-fallback"
         result["provider_error"] = str(exc)
-        return result
+        return _sanitize(result, len(images))
     result = _sanitize(result, len(images))
     result.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
     return result

@@ -125,7 +125,12 @@ SPECIALISTS: dict[str, Specialist] = {
         ),
         Specialist(
             "water", "Soil & Water", _run_water,
-            lambda d: f"Water-context proxy; 3-day forecast rain {d.get('forecast_rain_3d_mm', '?')} mm",
+            lambda d: (
+                "Live rainfall was not available, so no irrigation figure was calculated"
+                if d.get("status") != "success"
+                else f"Water-context proxy; 3-day forecast rain {d.get('forecast_rain_3d_mm', '?')} mm"
+            ),
+            healthy=lambda d: d.get("status") == "success" and bool(d.get("forecast_live")),
         ),
     )
 }

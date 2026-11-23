@@ -379,6 +379,15 @@ def _quality(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+_BLOCKED_DOC_STATUS = {"rejected", "revoked", "draft", "unapproved", "archived"}
+
+
+def _citation_row_allowed(row: dict[str, Any]) -> bool:
+    """Drop rows the index explicitly marks as not approved. Missing status stays searchable."""
+    status = str(row.get("approval_status") or row.get("document_status") or "").strip().lower()
+    return status not in _BLOCKED_DOC_STATUS
+
+
 def search_knowledge(
     query: str,
     *,
@@ -414,6 +423,8 @@ def search_knowledge(
         rows = service_client().rpc("search_knowledge_hybrid", params).execute().data or []
         results: list[dict[str, Any]] = []
         for row in rows:
+            if not _citation_row_allowed(row):
+                continue
             excerpt = _normalize_text(str(row.get("content") or ""))
             if len(excerpt) > settings.RAG_MAX_EXCERPT_CHARS:
                 excerpt = excerpt[: settings.RAG_MAX_EXCERPT_CHARS].rstrip() + "…"

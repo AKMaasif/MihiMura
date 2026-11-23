@@ -39,6 +39,15 @@ def select_tools(route: RouteDecision, question: str, context: dict[str, Any] | 
     return build_tool_plan(route.intent, "decision_support", question, context or {}).bool_map()
 
 
+def weather_is_live(weather: dict[str, Any]) -> bool:
+    """Demo arrays are labeled and must not drive a field decision."""
+    return bool(weather.get("live")) and str(weather.get("status") or "").lower() not in {
+        "unavailable",
+        "error",
+        "fallback_demo",
+    }
+
+
 def next_day_rain_probability(weather: dict[str, Any]) -> float:
     values = (weather.get("daily") or {}).get("precipitation_probability_max") or []
     if not values:
@@ -68,10 +77,11 @@ def fallback_decision(
     lang = normalize_language(ctx.get("language") or detect_language(question).language)
     text = i18n.bundle("decision_fallback", lang)
     weather, market = evidence.weather, evidence.market
-    rain = next_day_rain_probability(weather)
+    live_weather = weather_is_live(weather)
+    rain = next_day_rain_probability(weather) if live_weather else 0.0
     is_market = route.intent == "market_decision"
 
-    if route.intent == "weather_decision" and weather.get("live"):
+    if route.intent == "weather_decision" and live_weather:
         current = weather.get("current") or {}
         action = text["weather_live"].format(
             location=ctx.get("location") or text["location_default"],
@@ -88,7 +98,7 @@ def fallback_decision(
             channels = [x.get("channel", "") for x in (market.get("channels") or [])[:6] if x.get("channel")]
             action, why = text["market_channels"], text["market_channels_why"].format(channels="; ".join(channels))
         level, confirm = "watch", False
-    elif any(k in lower for k in _FERTILIZER_TERMS) and rain >= 60:
+    elif live_weather and any(k in lower for k in _FERTILIZER_TERMS) and rain >= 60:
         action, why, level, confirm = text["fertilizer_rain"], text["fertilizer_rain_why"].format(rain=rain), "action", True
     elif any(k in lower for k in _RATE_TERMS):
         action, why, level, confirm = text["rate_sensitive"], text["rate_sensitive_why"], "action", True
@@ -199,8 +209,6 @@ def run_decision(turn: Turn) -> dict[str, Any]:
         )
         out = review_rates(out, evidence.knowledge, safety)
         out.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
-        if not out.get("sources"):
-            out["sources"] = evidence_sources(evidence.weather, evidence.climate, evidence.knowledge, market_used=bool(tool_plan.get("market")))
         out = enforce(out, safety)
         if out.get("expert_escalation_recommended") and safety.get("expert_threshold"):
             out["response_type"] = "expert_escalation"
@@ -214,6 +222,10 @@ def run_decision(turn: Turn) -> dict[str, Any]:
             out["provider"] = "deterministic-decision-fallback"
             out["provider_error"] = provider_error
 
+    # Citations come only from tools that actually ran. A model-written source list is not evidence.
+    out["sources"] = evidence_sources(
+        evidence.weather, evidence.climate, evidence.knowledge, market_used=bool(tool_plan.get("market"))
+    )
     out = finalize_response(out, defaults=i18n.bundle("defaults", turn.language))
     selected = [name for name, spec in plan_detail["tools"].items() if spec.get("enabled")]
     out["agent_trace"] = [

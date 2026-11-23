@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     VERSION: str = "8.0.0"
     API_V1_STR: str = "/api/v1"
     DEMO_MODE: bool = True
+    # Demo requests share one farmer identity. Privileged admin/knowledge tools
+    # stay off unless an operator explicitly opts in. Public servers should set
+    # DEMO_MODE=false as well.
+    DEMO_PRIVILEGED: bool = False
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Supabase is the single identity + application-data platform.

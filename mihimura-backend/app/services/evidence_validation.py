@@ -74,8 +74,17 @@ def assess_evidence(
         add("Live market price", bool((plan.get("intent") or "") == "market_decision"), live_price, 0.15, f"price_feed={market.get('price_feed','not_connected')}", "pass" if live_price else "unavailable")
 
     if _tool_enabled(plan, "economics"):
-        deterministic = economics.get("status") in {"illustrative_planning_estimate", "verified_input_estimate"}
-        add("Deterministic economics", True, deterministic, 0.10, f"status={economics.get('status','not_available')}")
+        status = str(economics.get("status") or "")
+        verified = status == "verified_input_estimate"
+        illustrative = status == "illustrative_planning_estimate"
+        add(
+            "Deterministic economics",
+            True,
+            verified,
+            0.10,
+            f"status={status or 'not_available'}",
+            "pass" if verified else "limited" if illustrative else "missing",
+        )
 
     if _tool_enabled(plan, "water"):
         usable = water.get("status") not in {None, "not_requested", "unavailable", "error"}

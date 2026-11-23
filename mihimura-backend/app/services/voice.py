@@ -60,7 +60,7 @@ def create_voice_session_token(user: dict[str, Any], language: str = "English") 
     safe_language = language if language in {"English", "Sinhala", "Tamil"} else "English"
     name = user.get("name") or "Farmer"
 
-    # The authoritative agricultural reasoning stays behind consult_mihimura (/ask-ai).
+    # Live audio is not attached to /ask-ai. The instruction forbids consequential advice.
     instruction = voice_system_prompt(name, safe_language)
 
     return {
@@ -70,6 +70,8 @@ def create_voice_session_token(user: dict[str, Any], language: str = "English") 
         "model": settings.GEMINI_LIVE_MODEL,
         "voice": settings.GEMINI_LIVE_VOICE,
         "language": safe_language,
+        "grounded": False,
+        "advice_policy": "no_consequential_agriculture_advice",
         "system_instruction": instruction,
     }
 
