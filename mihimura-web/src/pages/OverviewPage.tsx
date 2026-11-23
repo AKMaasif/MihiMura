@@ -95,6 +95,7 @@ export default function OverviewPage() {
   const [activeLayer, setActiveLayer] = useState<MapLayer>('cropHealth');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [provinceSort, setProvinceSort] = useState<'risk' | 'name'>('risk');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -104,7 +105,7 @@ export default function OverviewPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const provinces: Record<string, ProvinceData> = (dashboard?.provinces ?? {}) as Record<
     string,
@@ -122,7 +123,7 @@ export default function OverviewPage() {
     return [...items].sort((a, b) => a.healthScore - b.healthScore);
   }, [provinceSort, provinces]);
 
-  if (!dashboard || !selectedData) {
+  if (!dashboard) {
     return (
       <div className="loading-screen">
         <div className="loading-brand">
@@ -130,6 +131,31 @@ export default function OverviewPage() {
         </div>
         <div className="loading-line" />
         <p>Preparing agricultural intelligence…</p>
+      </div>
+    );
+  }
+
+  if (dashboard._connection === 'offline' || !selectedData) {
+    return (
+      <div className="loading-screen" role="alert">
+        <div className="loading-brand">
+          <Leaf size={24} /> Mihimura
+        </div>
+        <h2>National overview is unavailable</h2>
+        <p>
+          {dashboard._error ||
+            'The API did not return province scores. Sample map values are not shown in their place.'}
+        </p>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => {
+            setDashboard(null);
+            setReloadKey((value) => value + 1);
+          }}
+        >
+          Retry
+        </button>
       </div>
     );
   }

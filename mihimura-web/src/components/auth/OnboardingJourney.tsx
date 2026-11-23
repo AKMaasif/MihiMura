@@ -31,14 +31,20 @@ export default function OnboardingJourney() {
   const nav = useNavigate();
   const { completeOnboarding, user } = useAuth();
   const pending = (() => {
+    const roles = ['farmer', 'manager', 'agronomist', 'supplier', 'analyst'];
     try {
-      return JSON.parse(sessionStorage.getItem('mihimura_pending_identity') || '{}');
+      const raw = JSON.parse(sessionStorage.getItem('mihimura_pending_identity') || '{}');
+      return {
+        name: typeof raw?.name === 'string' ? raw.name.slice(0, 80) : '',
+        role: roles.includes(raw?.role) ? raw.role : '',
+      };
     } catch {
-      return {};
+      return { name: '', role: '' };
     }
   })();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [d, setD] = useState<any>({
     name: pending.name || user?.displayName || '',
     role: pending.role || user?.requestedRole || 'farmer',
@@ -66,10 +72,16 @@ export default function OnboardingJourney() {
     );
   const finish = async () => {
     setBusy(true);
-    await completeOnboarding({ ...d, primary_crops_json: d.crops, accessibility_json: d.accessibility });
-    sessionStorage.removeItem('mihimura_pending_identity');
-    setBusy(false);
-    nav('/app/dashboard', { replace: true });
+    setError('');
+    try {
+      await completeOnboarding({ ...d, primary_crops_json: d.crops, accessibility_json: d.accessibility });
+      sessionStorage.removeItem('mihimura_pending_identity');
+      nav('/app/dashboard', { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save your profile. Nothing was marked complete.');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="onboarding-shell">
@@ -396,9 +408,16 @@ export default function OnboardingJourney() {
                 Continue <ArrowRight />
               </Button>
             ) : (
-              <Button disabled={busy} onClick={finish}>
-                {busy ? 'Building your field workspace…' : 'Enter my MihiMura dashboard'} <ArrowRight />
-              </Button>
+              <>
+                {error && (
+                  <p className="auth-error" role="alert">
+                    {error}
+                  </p>
+                )}
+                <Button disabled={busy} onClick={finish}>
+                  {busy ? 'Building your field workspace…' : 'Enter my MihiMura dashboard'} <ArrowRight />
+                </Button>
+              </>
             )}
           </div>
         </div>

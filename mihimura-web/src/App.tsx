@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import BootSplash from './components/BootSplash';
@@ -39,10 +39,45 @@ import {
 import { AdminPage, AgronomistPage, GovernmentPage, ReportsPage, SettingsPage } from './pages/account';
 import './index.css';
 
+function ProfileLoadError() {
+  const { authError, refreshProfile, logout } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(authError);
+  return (
+    <section className="loading-screen" role="alert">
+      <div className="loading-brand">MihiMura</div>
+      <h2>Your account signed in, but the profile did not load.</h2>
+      <p>{message || 'The API did not return a profile. Check that the backend is running and try again.'}</p>
+      <div className="profile-error-actions">
+        <button
+          type="button"
+          onClick={() => {
+            setBusy(true);
+            void refreshProfile()
+              .catch((error) => setMessage(error instanceof Error ? error.message : 'Profile retry failed.'))
+              .finally(() => setBusy(false));
+          }}
+          disabled={busy}
+        >
+          {busy ? 'Retrying…' : 'Retry profile'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void logout();
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+    </section>
+  );
+}
 function Protected({ children }: { children: ReactNode }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, authError } = useAuth();
   if (loading) return <BootSplash />;
   if (!user) return <Navigate to="/auth" replace />;
+  if (!profile && authError) return <ProfileLoadError />;
   if (!profile?.onboarding_complete) return <Navigate to="/onboarding" replace />;
   return children;
 }
@@ -79,11 +114,27 @@ function RoleGate({
   );
 }
 function OnboardingGate() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, authError } = useAuth();
   if (loading) return <BootSplash />;
   if (!user) return <Navigate to="/auth?mode=register" replace />;
+  if (!profile && authError) return <ProfileLoadError />;
   if (profile?.onboarding_complete) return <Navigate to="/app/dashboard" replace />;
   return <OnboardingJourney />;
+}
+function ResumeSession() {
+  const { user, profile, loading, authError } = useAuth();
+  const nav = useNavigate();
+  useEffect(() => {
+    if (loading) return;
+    if (sessionStorage.getItem('mihimura_oauth_pending') !== '1') return;
+    sessionStorage.removeItem('mihimura_oauth_pending');
+    if (!user || authError || !profile) {
+      nav('/auth', { replace: true });
+      return;
+    }
+    nav(profile.onboarding_complete ? '/app/dashboard' : '/onboarding', { replace: true });
+  }, [loading, user, profile, authError, nav]);
+  return null;
 }
 function SplashGate({ children }: { children: ReactNode }) {
   const [show, setShow] = useState(() => sessionStorage.getItem('mihimura_boot_seen') !== '1');
@@ -104,6 +155,7 @@ export default function App() {
       <LanguageProvider>
         <HashRouter>
           <SplashGate>
+            <ResumeSession />
             <Routes>
               <Route element={<PublicLayout />}>
                 <Route path="/welcome" element={<WelcomePage />} />

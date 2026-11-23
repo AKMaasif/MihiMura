@@ -3,6 +3,19 @@ import { supabase, supabaseConfigured } from './supabase';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
 const DEMO_KEY = 'mihimura_demo_session';
+const DEMO_UID = '00000000-0000-0000-0000-000000000001';
+
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail || `Request failed (${status})`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
 
 async function headers(json = true): Promise<Record<string, string>> {
   const base: Record<string, string> = json ? { 'Content-Type': 'application/json' } : {};
@@ -18,8 +31,9 @@ async function headers(json = true): Promise<Record<string, string>> {
   const rawDemo = localStorage.getItem(DEMO_KEY);
   if (rawDemo) {
     try {
-      const demo = JSON.parse(rawDemo);
-      return { ...base, 'X-Demo-User': demo?.uid || '00000000-0000-0000-0000-000000000001' };
+      JSON.parse(rawDemo);
+      // The backend ignores this header and uses its own fixed demo identity.
+      return { ...base, 'X-Demo-User': DEMO_UID };
     } catch {
       localStorage.removeItem(DEMO_KEY);
     }
@@ -48,22 +62,49 @@ async function errorMessage(response: Response): Promise<string> {
   }
 }
 
-async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      ...(await headers(!(options.body instanceof FormData))),
-      ...(options.headers || {}),
-    },
-  });
+type ApiOptions = RequestInit & { timeoutMs?: number };
 
-  if (!response.ok) {
-    throw new Error((await errorMessage(response)) || `Request failed: ${response.status}`);
+function timeoutFor(path: string, override?: number) {
+  if (override) return override;
+  if (path.startsWith('/ask-ai') || path.includes('/reports') || path.startsWith('/diagnose')) return 90_000;
+  if (path.startsWith('/voice/')) return 45_000;
+  if (path.startsWith('/knowledge/documents')) return 120_000;
+  return 25_000;
+}
+
+async function request<T = any>(path: string, options: ApiOptions = {}): Promise<T> {
+  const { timeoutMs, signal, ...rest } = options;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutFor(path, timeoutMs));
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener('abort', () => controller.abort(), { once: true });
   }
+  try {
+    const response = await fetch(`${BASE}${path}`, {
+      ...rest,
+      signal: controller.signal,
+      headers: {
+        ...(await headers(!(rest.body instanceof FormData))),
+        ...(rest.headers || {}),
+      },
+    });
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) return response.json();
-  return (await response.text()) as T;
+    if (!response.ok) {
+      throw new ApiError(response.status, (await errorMessage(response)) || `Request failed: ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) return response.json();
+    return (await response.text()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError(0, 'The request timed out. Check your connection and try again.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 export const platformApi = {
@@ -170,15 +211,27 @@ export const platformApi = {
   voiceSessionToken: (data: { language: string; project_id?: string }) =>
     request('/voice/session-token', { method: 'POST', body: JSON.stringify(data) }),
   voiceTts: async (text: string, language: string) => {
-    const response = await fetch(`${BASE}/voice/tts`, {
-      method: 'POST',
-      headers: await headers(true),
-      body: JSON.stringify({ text, language }),
-    });
-    if (!response.ok) {
-      throw new Error((await errorMessage(response)) || `Voice TTS request failed: ${response.status}`);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 45_000);
+    try {
+      const response = await fetch(`${BASE}/voice/tts`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: await headers(true),
+        body: JSON.stringify({ text, language }),
+      });
+      if (!response.ok) {
+        throw new ApiError(response.status, (await errorMessage(response)) || `Voice TTS request failed: ${response.status}`);
+      }
+      return response.blob();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError(0, 'Voice playback timed out. The written answer is still available.');
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
     }
-    return response.blob();
   },
 
   ask: (

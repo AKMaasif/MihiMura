@@ -978,6 +978,13 @@ export function AIPage() {
             <Card title="How this answer was made" subtitle="Each agent and tool that ran, in order">
               {result ? (
                 <div className="field-log">
+                  {result.workflow_trace && (
+                    <p className="field-log-footer">
+                      Route {result.workflow_trace.route || 'unknown'} · {result.workflow_trace.intent || 'unspecified'}{' '}
+                      · evidence {result.workflow_trace.evidence_level || 'n/a'} ·{' '}
+                      {result.workflow_trace.elapsed_ms ?? '—'} ms · {result.workflow_trace.outcome || 'done'}
+                    </p>
+                  )}
                   <ol className="agent-trace-list">
                     {(result.agent_trace || []).map((x: any, i: number) => {
                       const status = typeof x === 'string' ? 'complete' : String(x.status || 'complete');

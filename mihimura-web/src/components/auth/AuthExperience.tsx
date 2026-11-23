@@ -61,6 +61,8 @@ export default function AuthExperience() {
     updatePassword,
     demoLogin,
     supabaseConfigured,
+    authError,
+    refreshProfile,
   } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
@@ -87,9 +89,20 @@ export default function AuthExperience() {
   const [otpSent, setOtpSent] = useState(false);
 
   useEffect(() => {
+    const stored = sessionStorage.getItem('mihimura_oauth_error');
+    if (!stored) return;
+    setError(stored);
+    sessionStorage.removeItem('mihimura_oauth_error');
+  }, []);
+
+  useEffect(() => {
+    if (user && !profile && authError) setError(authError);
+  }, [user, profile, authError]);
+
+  useEffect(() => {
     if (!user || mode === 'recovery') return;
     if (profile?.onboarding_complete) nav('/app/dashboard', { replace: true });
-    else if (profile !== undefined && profile !== null) nav('/onboarding', { replace: true });
+    else if (profile) nav('/onboarding', { replace: true });
   }, [user, profile, mode, nav]);
 
   useEffect(() => {
@@ -341,7 +354,25 @@ export default function AuthExperience() {
                 Explore with a safe demo farmer
               </button>
             )}
-            {error && <p className="auth-error">{error}</p>}
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+            {user && !profile && (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  setBusy(true);
+                  void refreshProfile()
+                    .catch((e: any) => setError(e.message))
+                    .finally(() => setBusy(false));
+                }}
+              >
+                Retry profile loading
+              </button>
+            )}
           </div>
         )}
 
@@ -462,7 +493,25 @@ export default function AuthExperience() {
               Use Google instead
             </button>
             {info && <p className="auth-info">{info}</p>}
-            {error && <p className="auth-error">{error}</p>}
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+            {user && !profile && (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  setBusy(true);
+                  void refreshProfile()
+                    .catch((e: any) => setError(e.message))
+                    .finally(() => setBusy(false));
+                }}
+              >
+                Retry profile loading
+              </button>
+            )}
           </div>
         )}
 
@@ -611,7 +660,25 @@ export default function AuthExperience() {
               Prefer Google? Continue instantly
             </button>
             {info && <p className="auth-info">{info}</p>}
-            {error && <p className="auth-error">{error}</p>}
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+            {user && !profile && (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  setBusy(true);
+                  void refreshProfile()
+                    .catch((e: any) => setError(e.message))
+                    .finally(() => setBusy(false));
+                }}
+              >
+                Retry profile loading
+              </button>
+            )}
           </div>
         )}
 
@@ -649,7 +716,25 @@ export default function AuthExperience() {
               </p>
             )}
             {info && <p className="auth-info">{info}</p>}
-            {error && <p className="auth-error">{error}</p>}
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+            {user && !profile && (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  setBusy(true);
+                  void refreshProfile()
+                    .catch((e: any) => setError(e.message))
+                    .finally(() => setBusy(false));
+                }}
+              >
+                Retry profile loading
+              </button>
+            )}
           </div>
         )}
       </div>

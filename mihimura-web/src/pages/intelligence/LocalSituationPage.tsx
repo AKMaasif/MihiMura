@@ -1,27 +1,39 @@
 import { useEffect, useState } from 'react';
 import { CloudRain, CloudSun, Droplets, MapPin, RefreshCcw, ThermometerSun, Wind } from 'lucide-react';
-import { Card, Metric, Notice, Status, Button } from '../../components/common/UI';
+import { Card, Metric, Notice, Button } from '../../components/common/UI';
 import { platformApi } from '../../services/platformApi';
+import { coordinatePair } from '../../services/location';
 import { useAuth } from '../../context/AuthContext';
 
 export function LocalSituationPage() {
   const { profile } = useAuth();
   const [weather, setWeather] = useState<any>(null),
-    [history, setHistory] = useState<any>(null);
-  const lat = profile?.lat || 7.291,
-    lon = profile?.lon || 81.674;
+    [history, setHistory] = useState<any>(null),
+    [error, setError] = useState('');
+  const coords = coordinatePair(profile?.lat, profile?.lon);
   const load = async () => {
+    if (!coords) {
+      setWeather(null);
+      setHistory(null);
+      setError('Add a farm or profile location before requesting a local forecast. No default district was used.');
+      return;
+    }
+    setError('');
     const [a, b] = await Promise.allSettled([
-      platformApi.weather(lat, lon, 14),
-      platformApi.climateHistory(lat, lon),
+      platformApi.weather(coords.lat, coords.lon, 14),
+      platformApi.climateHistory(coords.lat, coords.lon),
     ]);
     if (a.status === 'fulfilled') setWeather(a.value);
+    else setError(a.reason instanceof Error ? a.reason.message : 'The forecast could not be loaded.');
     if (b.status === 'fulfilled') setHistory(b.value);
   };
   useEffect(() => {
     void load();
-  }, []);
-  const rain = weather?.daily?.precipitation_probability_max?.[1] ?? 82;
+  }, [profile?.lat, profile?.lon]);
+  const live = Boolean(weather?.live);
+  const rain = live ? weather?.daily?.precipitation_probability_max?.[1] : undefined;
+  const temperature = live ? weather?.current?.temperature_2m : undefined;
+  const wind = live ? weather?.current?.wind_speed_10m : undefined;
   return (
     <>
       <section className="page-intro">
@@ -29,7 +41,7 @@ export function LocalSituationPage() {
           <span className="eyebrow">
             <MapPin /> GPS-aware local intelligence
           </span>
-          <h2>{profile?.district || 'Ampara'} situation card</h2>
+          <h2>{profile?.district || 'Your district'} situation card</h2>
           <p>
             Current field context, near-term forecast and longer climate baseline are shown separately so
             freshness is not confused.
@@ -39,58 +51,56 @@ export function LocalSituationPage() {
           <RefreshCcw /> Refresh sources
         </Button>
       </section>
+      {error && (
+        <Notice tone="warning" title="Local forecast">
+          {error}
+        </Notice>
+      )}
       <div className="dashboard-metrics">
         <Metric
           label="GPS context"
-          value={`${lat.toFixed(3)}, ${lon.toFixed(3)}`}
-          note={profile?.location_consent ? 'permission granted' : 'manual fallback'}
+          value={coords ? `${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}` : 'Not set'}
+          note={coords ? (profile?.location_consent ? 'permission granted' : 'saved profile location') : 'no default coordinate'}
           icon={MapPin}
         />
         <Metric
-          label="Heat index proxy"
-          value="36°C"
-          note="Watch during exposed operations"
+          label="Temperature"
+          value={temperature == null ? '—' : `${temperature}°C`}
+          note={live ? 'Current 2 m temperature' : 'Shown only from a live forecast'}
           icon={ThermometerSun}
           tone="orange"
         />
-        <Metric label="Forecast rain" value={`${rain}%`} note="Tomorrow" icon={CloudRain} tone="blue" />
+        <Metric
+          label="Forecast rain"
+          value={rain == null ? '—' : `${rain}%`}
+          note={live ? 'Tomorrow' : 'Live forecast unavailable'}
+          icon={CloudRain}
+          tone="blue"
+        />
         <Metric
           label="Wind"
-          value={`${weather?.current?.wind_speed_10m ?? 11} km/h`}
+          value={wind == null ? '—' : `${wind} km/h`}
           note="Current 10 m wind"
           icon={Wind}
         />
         <Metric
           label="Water wallet"
-          value="6.2 days"
-          note="estimated remaining"
+          value="Not calculated"
+          note="Needs a verified soil and crop coefficient"
           icon={Droplets}
           tone="blue"
         />
       </div>
       <div className="two-col">
         <Card title="Local risk card" subtitle="Field-level composite; each component remains visible">
-          <div className="risk-table">
-            {[
-              ['Drought proxy', 24, 'green'],
-              ['Flood / runoff', 76, 'orange'],
-              ['Heat', 52, 'amber'],
-              ['Wind exposure', 31, 'green'],
-              ['Pest / disease cluster', 69, 'orange'],
-            ].map(([t, v, c]: any) => (
-              <div key={t}>
-                <span>{t}</span>
-                <i>
-                  <em style={{ width: `${v}%` }} />
-                </i>
-                <Status tone={c}>{v}/100</Status>
-              </div>
-            ))}
-          </div>
+          <Notice tone="info" title="Composite scores">
+            Drought, flood, heat and pest scores are not shown here until a verified local model returns them.
+            Sample percentages are not used as a stand-in.
+          </Notice>
           <Notice tone="info" title="Data freshness">
-            Live forecast source: {weather?.source || 'Open-Meteo fallback'}. Climate baseline:{' '}
-            {history?.source || 'NASA POWER fallback'}. Official warnings should remain visible when they
-            differ.
+            Forecast: {live ? weather?.source || 'live source' : weather?.source || 'not loaded'}
+            {weather && !live ? ' (not valid for a field decision)' : ''}. Climate baseline:{' '}
+            {history?.live ? history?.source || 'loaded' : history?.source || 'not loaded'}.
           </Notice>
         </Card>
         <Card title="Top three precautions" subtitle="Specific to the selected local situation">
@@ -108,8 +118,8 @@ export function LocalSituationPage() {
             <li>
               <i>02</i>
               <div>
-                <b>Clear drainage at the western edge</b>
-                <p>Reduce runoff exposure before the forecast rain peak.</p>
+                <b>Check drainage before heavy rain</b>
+                <p>Use the live forecast above. Do not assume a rain peak that was not returned.</p>
               </div>
             </li>
             <li>
@@ -126,28 +136,32 @@ export function LocalSituationPage() {
         title="14-day operating window"
         subtitle="Forecast confidence generally decreases with horizon; use near-term days for consequential scheduling"
       >
-        <div className="forecast-grid">
-          {(weather?.daily?.time || Array.from({ length: 14 }, (_, i) => `Day ${i + 1}`))
-            .slice(0, 14)
-            .map((d: string, i: number) => (
+        {live && Array.isArray(weather?.daily?.time) ? (
+          <div className="forecast-grid">
+            {weather.daily.time.slice(0, 14).map((d: string, i: number) => (
               <div
-                className={
-                  (weather?.daily?.precipitation_probability_max?.[i] ??
-                    [45, 82, 67, 39, 27, 51, 35][i % 7]) > 65
-                    ? 'wet'
-                    : ''
-                }
+                className={(weather.daily.precipitation_probability_max?.[i] ?? 0) > 65 ? 'wet' : ''}
                 key={d}
               >
-                <small>{d.slice(5) || d}</small>
+                <small>{String(d).slice(5) || d}</small>
                 <CloudSun />
-                <b>{weather?.daily?.temperature_2m_max?.[i] ?? 32}°</b>
+                <b>
+                  {weather.daily.temperature_2m_max?.[i] == null ? '—' : `${weather.daily.temperature_2m_max[i]}°`}
+                </b>
                 <span>
-                  <Droplets /> {weather?.daily?.precipitation_probability_max?.[i] ?? 35}%
+                  <Droplets />{' '}
+                  {weather.daily.precipitation_probability_max?.[i] == null
+                    ? '—'
+                    : `${weather.daily.precipitation_probability_max[i]}%`}
                 </span>
               </div>
             ))}
-        </div>
+          </div>
+        ) : (
+          <Notice tone="warning" title="Forecast window">
+            No live daily forecast is available for this location.
+          </Notice>
+        )}
       </Card>
     </>
   );

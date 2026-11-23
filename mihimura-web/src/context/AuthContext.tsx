@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 
+import { oauthRedirectUrl } from '../services/authRedirect';
 import { platformApi } from '../services/platformApi';
 import { supabase, supabaseConfigured } from '../services/supabase';
 
@@ -16,6 +17,7 @@ type AuthContextValue = {
   user: SessionUser | null;
   profile: any;
   loading: boolean;
+  authError: string;
   supabaseConfigured: boolean;
   loginEmail: (email: string, password: string) => Promise<any>;
   registerEmail: (name: string, email: string, password: string, role?: string) => Promise<any>;
@@ -33,7 +35,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const DEMO_KEY = 'mihimura_demo_session';
 const DEMO_UID = '00000000-0000-0000-0000-000000000001';
-let pendingPhone = '';
+const PHONE_KEY = 'mihimura_pending_phone';
 
 function mapUser(u: User): SessionUser {
   const metadata = u.user_metadata || {};
@@ -50,9 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
 
   const refreshProfile = async () => {
     const latest = await platformApi.me();
+    setAuthError('');
     setProfile(latest);
     return latest;
   };
@@ -65,11 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const demo = JSON.parse(rawDemo);
           setUser(demo);
           const latest = await platformApi.me();
+          setAuthError('');
           setProfile(latest);
           return;
         } catch (error) {
           console.error('[AUTH] Demo session failed:', error);
           localStorage.removeItem(DEMO_KEY);
+          setAuthError(error instanceof Error ? error.message : 'Demo sign-in could not reach the API.');
         }
       }
       setUser(null);
@@ -81,11 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(mapUser(session.user));
     try {
       const latest = await platformApi.me();
+      setAuthError('');
       setProfile(latest);
     } catch (error) {
       console.error('[AUTH] Supabase session is valid but backend profile loading failed:', error);
       setProfile(null);
-      throw error;
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : 'Your Google session is valid, but the MihiMura profile could not be loaded.',
+      );
     }
   };
 
@@ -117,7 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') sessionStorage.setItem('mihimura_password_recovery', '1');
-      // Defer backend calls outside the auth callback itself.
+      // getSession() already applied the first session. Refresh must not flash the boot screen.
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return;
       window.setTimeout(() => {
         if (!alive) return;
         setLoading(true);
@@ -153,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { full_name: name, name, requested_role: role },
-        emailRedirectTo: `${window.location.origin}/?flow=signup#/auth`,
+        emailRedirectTo: oauthRedirectUrl(window.location.origin),
       },
     });
     if (error) throw error;
@@ -162,17 +174,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginGoogle = async () => {
     const client = requireSupabase();
+    sessionStorage.setItem('mihimura_oauth_pending', '1');
     const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/?flow=oauth#/auth` },
+      options: { redirectTo: oauthRedirectUrl(window.location.origin) },
     });
+    if (error) sessionStorage.removeItem('mihimura_oauth_pending');
     if (error) throw error;
     return data;
   };
 
   const sendPhoneOtp = async (phone: string) => {
     const client = requireSupabase();
-    pendingPhone = phone;
+    sessionStorage.setItem(PHONE_KEY, phone);
     const { data, error } = await client.auth.signInWithOtp({ phone });
     if (error) throw error;
     return data;
@@ -180,10 +194,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyPhoneOtp = async (code: string) => {
     const client = requireSupabase();
-    if (!pendingPhone) throw new Error('Request a verification code first.');
-    const { data, error } = await client.auth.verifyOtp({ phone: pendingPhone, token: code, type: 'sms' });
+    const phone = sessionStorage.getItem(PHONE_KEY) || '';
+    if (!phone) throw new Error('Request a verification code first.');
+    const { data, error } = await client.auth.verifyOtp({ phone, token: code, type: 'sms' });
     if (error) throw error;
-    pendingPhone = '';
+    sessionStorage.removeItem(PHONE_KEY);
     return data;
   };
 
@@ -191,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = requireSupabase();
     if (!email) throw new Error('Enter your email address first.');
     const { data, error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/?flow=recovery#/auth?mode=recovery`,
+      redirectTo: oauthRedirectUrl(window.location.origin),
     });
     if (error) throw error;
     return data;
@@ -215,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(demo));
     setUser(demo);
+    setAuthError('');
     const latest = await platformApi.me();
     setProfile(latest);
     return latest;
@@ -225,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(DEMO_KEY);
     setUser(null);
     setProfile(null);
+    setAuthError('');
   };
 
   const completeOnboarding = async (data: any) => {
@@ -252,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       loading,
+      authError,
       supabaseConfigured,
       loginEmail,
       registerEmail,
@@ -265,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeOnboarding,
       refreshProfile,
     }),
-    [user, profile, loading],
+    [user, profile, loading, authError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

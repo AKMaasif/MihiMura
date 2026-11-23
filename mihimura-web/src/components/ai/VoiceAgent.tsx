@@ -10,7 +10,6 @@ import {
   PhoneOff,
   Radio,
   ShieldCheck,
-  Sparkles,
   Volume2,
   Wifi,
   WifiOff,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../common/UI';
 import { platformApi } from '../../services/platformApi';
+import { coordinatePair } from '../../services/location';
 import './VoiceAgent.css';
 
 export type VoiceLanguage = 'English' | 'Sinhala' | 'Tamil';
@@ -35,17 +35,22 @@ type VoiceAgentProps = {
 };
 
 function projectContext(project: any, profile: any, language: VoiceLanguage) {
+  const coords = coordinatePair(project?.lat ?? profile?.lat, project?.lon ?? profile?.lon);
   return {
     province: project?.province || '',
-    location: project?.district || profile?.district || 'Sri Lanka',
+    location: project?.district || profile?.district || '',
     project_id: project?.id || '',
     farm_id: project?.farm_id || '',
-    lat: project?.lat || profile?.lat || 7.291,
-    lon: project?.lon || profile?.lon || 81.674,
+    ...(coords || {}),
     crop: project?.crop || '',
     stage: project?.stage || '',
     language,
+    language_mode: 'auto',
   };
+}
+
+function speechRecognitionAvailable() {
+  return Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 }
 
 function recognitionLanguage(language: VoiceLanguage) {
@@ -224,31 +229,36 @@ export function VoiceAgent({
     });
 
   const speakWithBrowserFallback = (text: string) =>
-    new Promise<void>((resolve) => {
+    new Promise<boolean>((resolve) => {
       if (!('speechSynthesis' in window)) {
-        resolve();
+        resolve(false);
         return;
       }
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'Sinhala' ? 'si-LK' : language === 'Tamil' ? 'ta-LK' : 'en-LK';
       utterance.rate = 1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
+      utterance.onend = () => resolve(true);
+      utterance.onerror = () => resolve(false);
       window.speechSynthesis.speak(utterance);
     });
 
   const speakText = async (text: string) => {
     if (!text.trim()) return;
-    console.log('[VOICE] Requesting Gemini TTS');
+    console.log('[VOICE] Requesting Gemini TTS for the verified advisor answer');
     try {
       const blob = await platformApi.voiceTts(text, language);
       console.log('[VOICE] Gemini TTS audio received', { bytes: blob.size, type: blob.type });
       await playBlob(blob);
       console.log('[VOICE] Gemini TTS playback completed');
     } catch (exc) {
-      console.warn('[VOICE] Gemini TTS failed; using browser speech fallback', exc);
-      await speakWithBrowserFallback(text);
+      console.warn('[VOICE] Gemini TTS failed; using browser speech of the same verified answer', exc);
+      const spoke = await speakWithBrowserFallback(text);
+      setError(
+        spoke
+          ? 'Cloud voice is unavailable. The browser is reading the verified MihiMura answer.'
+          : 'Voice playback is unavailable. Read the verified answer in the transcript.',
+      );
     }
   };
 
@@ -438,10 +448,11 @@ export function VoiceAgent({
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (!speechRecognitionAvailable()) {
       setOpen(true);
-      setError('Voice recognition is not supported in this browser. Please use Chrome or Edge.');
+      setError(
+        'This browser cannot use the microphone for speech recognition. Type the question in the advisor instead. Chrome or Edge on desktop usually support it.',
+      );
       setStatus('error');
       return;
     }
@@ -533,8 +544,12 @@ export function VoiceAgent({
           <Mic />
         </span>
         <div>
-          <b>Voice conversation</b>
-          <small>Hands-free · Gemini TTS · {language}</small>
+          <b>{speechRecognitionAvailable() ? 'Voice conversation' : 'Voice unavailable'}</b>
+          <small>
+            {speechRecognitionAvailable()
+              ? `Reads the verified advisor answer · ${language}`
+              : 'Use the text box on this page'}
+          </small>
         </div>
       </button>
 
@@ -548,7 +563,7 @@ export function VoiceAgent({
                 </span>
                 <div>
                   <b>MihiMura Voice</b>
-                  <small></small>
+                  <small>Speaks only after the verified advisor finishes</small>
                 </div>
               </div>
               <div className="voice-head-actions">

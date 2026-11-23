@@ -17,19 +17,24 @@ export function DisasterMapPage() {
     platformApi
       .projects()
       .then(setProjects)
-      .catch(() => {});
+      .catch((error) =>
+        setNotice(error instanceof Error ? error.message : 'Saved projects could not be loaded.'),
+      );
   }, []);
   const current = provinceData[selected];
   const score = (value?: number | null) => (value === null || value === undefined ? '—' : `${value}/100`);
   // Hill-country provinces are landslide-prone; heavy forecast rain raises the level.
   const hilly = ['Central', 'Sabaragamuwa', 'Uva'].includes(selected);
+  const rainfall = current?.rainfallRisk;
   const landslide = !hilly
     ? 'Low'
-    : current.rainfallRisk >= 70
-      ? 'High'
-      : current.rainfallRisk >= 45
-        ? 'Watch'
-        : 'Low';
+    : rainfall == null
+      ? '—'
+      : rainfall >= 70
+        ? 'High'
+        : rainfall >= 45
+          ? 'Watch'
+          : 'Low';
   const create = async () => {
     const p = projects.find((x) => x.province === selected) || projects[0];
     if (!p) {
@@ -41,7 +46,7 @@ export function DisasterMapPage() {
       title: `Review ${selected} rainfall/runoff exposure`,
       task_type: 'Disaster preparation',
       due_at: new Date(Date.now() + 12 * 3600e3).toISOString(),
-      priority: current.rainfallRisk > 70 ? 'high' : 'medium',
+      priority: (rainfall ?? 0) > 70 ? 'high' : 'medium',
       weather_dependency: 'Verify current official warning and live forecast',
       instructions:
         'Inspect drainage, access routes and vulnerable crop-stage operations. Escalate emergency warnings to official guidance.',
@@ -71,9 +76,11 @@ export function DisasterMapPage() {
       <Card
         title="Sri Lanka hazard overview"
         subtitle={
-          situation.live
-            ? 'Select a province to inspect current exposure from live forecast data'
-            : 'Live data unavailable — showing baseline reference values'
+          situation.offline
+            ? 'Live province data could not be loaded. Scores are hidden rather than replaced with sample values.'
+            : situation.live
+              ? 'Select a province to inspect current exposure from live forecast data'
+              : 'The service returned a baseline, not a live forecast.'
         }
       >
         <div className="national-map-grid">
@@ -86,28 +93,28 @@ export function DisasterMapPage() {
           />
           <div className="province-side">
             <Status tone="orange">{selected} Province</Status>
-            <h2>{current.rainfallRisk}/100</h2>
+            <h2>{score(rainfall)}</h2>
             <p>Rainfall / runoff exposure proxy</p>
             <div className="risk-mini-list">
               <div>
                 <CloudRain />
                 <span>
                   <small>Flood / runoff</small>
-                  <b>{current.rainfallRisk}/100</b>
+                  <b>{score(rainfall)}</b>
                 </span>
               </div>
               <div>
                 <ThermometerSun />
                 <span>
                   <small>Heat</small>
-                  <b>{score(current.heatStress)}</b>
+                  <b>{score(current?.heatStress)}</b>
                 </span>
               </div>
               <div>
                 <Waves />
                 <span>
                   <small>Drought / water stress</small>
-                  <b>{score(current.waterStress)}</b>
+                  <b>{score(current?.waterStress)}</b>
                 </span>
               </div>
               <div>

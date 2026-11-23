@@ -9,40 +9,50 @@ export function CommunityPage() {
   const [items, setItems] = useState<any[]>([]),
     [note, setNote] = useState(''),
     [type, setType] = useState('pest sighting'),
-    [sent, setSent] = useState(false);
-  const load = () =>
+    [sent, setSent] = useState(false),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(true);
+  const load = () => {
+    setLoading(true);
     platformApi
       .community()
-      .then(setItems)
-      .catch(() =>
-        setItems([
-          {
-            id: 'd1',
-            district: 'Ampara',
-            crop: 'Chilli',
-            report_type: 'leaf symptom cluster',
-            severity: 'watch',
-            note: 'Anonymous demo cluster above publication threshold',
-            created_at: new Date().toISOString(),
-          },
-        ]),
-      );
+      .then((rows) => {
+        setItems(Array.isArray(rows) ? rows : []);
+        setError('');
+      })
+      .catch((e) => {
+        setItems([]);
+        setError(e instanceof Error ? e.message : 'Community signals could not be loaded.');
+      })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => {
     void load();
   }, []);
   const submit = async () => {
     if (!note.trim()) return;
-    await platformApi.addCommunity({
-      district: profile?.district || 'Ampara',
-      crop: 'Chilli',
-      report_type: type,
-      severity: 'watch',
-      note,
-      lat: profile?.lat,
-      lon: profile?.lon,
-    });
-    setNote('');
-    setSent(true);
+    if (!profile?.district) {
+      setError('Add a district to your profile before sending a community signal.');
+      return;
+    }
+    setError('');
+    try {
+      await platformApi.addCommunity({
+        district: profile.district,
+        crop: Array.isArray(profile?.primary_crops_json) ? profile.primary_crops_json[0] || 'Chilli' : 'Chilli',
+        report_type: type,
+        severity: 'watch',
+        note,
+        lat: profile?.lat,
+        lon: profile?.lon,
+      });
+      setNote('');
+      setSent(true);
+      load();
+    } catch (e) {
+      setSent(false);
+      setError(e instanceof Error ? e.message : 'The signal was not saved.');
+    }
   };
   return (
     <>
@@ -91,7 +101,17 @@ export function CommunityPage() {
           )}
         </Card>
         <Card title="Regional watch signals" subtitle="Published clusters—not individual farmer reports">
-          {items.length ? (
+          {error && (
+            <Notice tone="warning" title="Community signals">
+              {error}{' '}
+              <button type="button" onClick={() => load()}>
+                Retry
+              </button>
+            </Notice>
+          )}
+          {loading ? (
+            <div className="page-loading">Loading published signals…</div>
+          ) : items.length ? (
             <div className="community-list">
               {items.map((x) => (
                 <div key={x.id}>
@@ -110,8 +130,12 @@ export function CommunityPage() {
             </div>
           ) : (
             <Empty
-              title="No regional cluster is above publication threshold"
-              detail="This is a positive state; individual reports remain private."
+              title={error ? 'Signals could not be loaded' : 'No regional cluster is above publication threshold'}
+              detail={
+                error
+                  ? 'Retry after the API is reachable. Sample clusters are not shown in their place.'
+                  : 'This is a positive state; individual reports remain private.'
+              }
             />
           )}
         </Card>

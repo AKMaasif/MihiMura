@@ -63,6 +63,7 @@ export function SriLankaProvinceMap({
   }, [activeLayer, provinces]);
 
   const visibleProvince = hoveredProvince ?? selectedProvince;
+  const hasVisibleData = Boolean(provinces[visibleProvince]);
   const visibleValue = getLayerValue(visibleProvince, activeLayer, provinces);
 
   return (
@@ -89,7 +90,7 @@ export function SriLankaProvinceMap({
 
       <div className="map-hover-readout">
         <span>{visibleProvince} Province</span>
-        <strong>{visibleValue}/100</strong>
+        <strong>{hasVisibleData ? `${visibleValue}/100` : '—'}</strong>
       </div>
 
       <svg

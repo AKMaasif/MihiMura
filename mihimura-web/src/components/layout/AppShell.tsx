@@ -175,6 +175,7 @@ export default function AppShell() {
   });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
   const searchWrap = useRef<HTMLDivElement>(null);
   const languageWrap = useRef<HTMLDivElement>(null);
   const notificationWrap = useRef<HTMLDivElement>(null);
@@ -209,8 +210,10 @@ export default function AppShell() {
     setLoadingNotifications(true);
     try {
       setNotifications(await platformApi.notifications());
-    } catch {
+      setNotificationError('');
+    } catch (error) {
       setNotifications([]);
+      setNotificationError(error instanceof Error ? error.message : 'Notifications could not be loaded.');
     } finally {
       setLoadingNotifications(false);
     }
@@ -322,6 +325,9 @@ export default function AppShell() {
 
   return (
     <div className="app-workspace">
+      {open && (
+        <button type="button" className="sidebar-scrim" aria-label="Close navigation" onClick={() => setOpen(false)} />
+      )}
       <aside className={`app-sidebar ${open ? 'open' : ''}`}>
         <div className="side-brand">
           <span>
@@ -384,7 +390,13 @@ export default function AppShell() {
       <main className="app-main">
         <header className="app-topbar">
           <div className="top-title">
-            <button className="mobile-nav" onClick={() => setOpen(true)}>
+            <button
+              className="mobile-nav"
+              type="button"
+              aria-label="Open navigation"
+              aria-expanded={open}
+              onClick={() => setOpen(true)}
+            >
               <Menu />
             </button>
             <div>
@@ -540,7 +552,12 @@ export default function AppShell() {
                     ) : (
                       <div className="popover-empty">
                         <Bell />
-                        <span>{t('noNotifications')}</span>
+                        <span>{notificationError || t('noNotifications')}</span>
+                        {notificationError && (
+                          <button type="button" onClick={() => void loadNotifications()}>
+                            Retry
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

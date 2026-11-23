@@ -22,11 +22,15 @@ export function WelcomePage() {
   const situation = useProvinceSituation();
   const provinces = Object.values(situation.provinces);
   // Highlight the province with the lowest crop condition and the wettest outlook.
-  const focus = provinces.reduce((a, b) => (b.healthScore < a.healthScore ? b : a), provinces[0]);
-  const wettest = provinces.reduce(
-    (a, b) => ((b.rainProbabilityNext3d ?? 0) > (a.rainProbabilityNext3d ?? 0) ? b : a),
-    provinces[0],
-  );
+  const focus = provinces.length
+    ? provinces.reduce((a, b) => (b.healthScore < a.healthScore ? b : a), provinces[0])
+    : undefined;
+  const wettest = provinces.length
+    ? provinces.reduce(
+        (a, b) => ((b.rainProbabilityNext3d ?? 0) > (a.rainProbabilityNext3d ?? 0) ? b : a),
+        provinces[0],
+      )
+    : undefined;
   const needsAction = focus && focus.healthScore < 60;
   return (
     <main className="welcome-page">
@@ -75,8 +79,8 @@ export function WelcomePage() {
               <span>
                 <Globe2 /> Live national pulse
               </span>
-              <Status tone={!situation.live ? 'amber' : needsAction ? 'orange' : 'green'}>
-                {!situation.live ? 'Baseline' : needsAction ? 'Action' : 'Stable'}
+              <Status tone={situation.offline || !situation.live ? 'amber' : needsAction ? 'orange' : 'green'}>
+                {situation.offline ? 'Offline' : !situation.live ? 'Baseline' : needsAction ? 'Action' : 'Stable'}
               </Status>
             </div>
             <SriLankaProvinceMap
