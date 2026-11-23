@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "MihiMura"
     VERSION: str = "8.0.0"
     API_V1_STR: str = "/api/v1"
-    DEMO_MODE: bool = True
+    DEMO_MODE: bool = False
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Supabase is the single identity + application-data platform.
@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     SUPABASE_REPORTS_BUCKET: str = "mihimura-reports"
     SUPABASE_ATTACHMENTS_BUCKET: str = "mihimura-attachments"
     SUPABASE_KNOWLEDGE_BUCKET: str = "mihimura-knowledge"
+
+    # Names are explicit because model availability depends on the provider account.
+    XAI_API_KEY: Optional[str] = None
+    XAI_MODEL: str = ""
+    XAI_VISION_MODEL: str = ""
+    META_API_KEY: Optional[str] = None
+    META_MODEL: str = ""
+    META_VISION_MODEL: str = ""
 
     GEMINI_API_KEY: Optional[str] = None
     # Model tiers. Each list is tried in order; a model that is unavailable for

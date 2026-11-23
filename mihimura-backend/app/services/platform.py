@@ -412,7 +412,7 @@ def create_expert_case(uid: str, p: dict[str, Any]):
 
 
 def _privileged(actor: dict[str, Any], roles: set[str]) -> bool:
-    return actor.get("provider") == "demo" or (actor.get("role") in roles and bool(actor.get("professional_verified")))
+    return actor.get("provider") != "demo" and actor.get("role") in roles and bool(actor.get("professional_verified"))
 
 
 OWNER_CASE_STATUSES = {"open", "closed", "cancelled"}

@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 
+from app.agents.llm import configured_providers
 from app.agents import i18n
 from app.agents.orchestrator import orchestrator
 from app.agents.vision import analyze_crop_images
@@ -113,7 +114,9 @@ class TaskPatch(BaseModel):
 
 def _require_knowledge_editor(user: dict[str, Any]) -> None:
     role = str(user.get("role") or "farmer").lower()
-    if user.get("provider") == "demo" or role == "admin":
+    if user.get("provider") == "demo":
+        raise HTTPException(403, "Demo accounts cannot modify the shared knowledge base")
+    if role == "admin":
         return
     if role in {"agronomist", "expert"} and bool(user.get("professional_verified")):
         return
@@ -122,7 +125,7 @@ def _require_knowledge_editor(user: dict[str, Any]) -> None:
 
 def _require_evaluation_admin(user: dict[str, Any]) -> None:
     role = str(user.get("role") or "farmer").lower()
-    if user.get("provider") == "demo" or (role == "admin" and bool(user.get("professional_verified"))):
+    if user.get("provider") != "demo" and role == "admin" and bool(user.get("professional_verified")):
         return
     raise HTTPException(403, "Administrator access is required for AI evaluation runs")
 
@@ -132,7 +135,11 @@ def health():
     return {
         "status": "ok",
         "version": settings.VERSION,
-        "ai_configured": bool(settings.GEMINI_API_KEY),
+        "demo_mode": settings.DEMO_MODE,
+        "ai_configured": bool(configured_providers()),
+        "ai_providers": configured_providers(),
+        "vision_providers": configured_providers(images=True),
+        "voice_tts_configured": bool(settings.GEMINI_API_KEY),
         "ai_models": {
             "reasoning": settings.reasoning_models,
             "fast": settings.fast_models,
@@ -223,10 +230,9 @@ def delete_me(u=Depends(get_current_user)):
 
 @router.get("/admin/users")
 def admin_users(u=Depends(get_current_user)):
-    data = list_users_for_admin(u)
-    if not data and not (u.get("provider") == "demo" or u.get("role") == "admin"):
+    if u.get("provider") == "demo" or u.get("role") != "admin" or not u.get("professional_verified"):
         raise HTTPException(403, "Verified administrator access required")
-    return data
+    return list_users_for_admin(u)
 
 
 @router.patch("/admin/users/{uid}/verification")
@@ -339,7 +345,7 @@ async def upload_knowledge_document(
     u=Depends(get_current_user),
 ):
     _require_knowledge_editor(u)
-    raw = await file.read()
+    raw = await file.read(settings.MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(raw) > settings.MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"Knowledge file exceeds {settings.MAX_UPLOAD_MB} MB")
     filename = file.filename or "knowledge-document"
@@ -868,7 +874,7 @@ async def diagnose_image(
     for image in images:
         if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
             raise HTTPException(400, "Upload JPEG, PNG or WebP")
-        data = await image.read()
+        data = await image.read(settings.MAX_UPLOAD_MB * 1024 * 1024 + 1)
         total += len(data)
         if len(data) > settings.MAX_UPLOAD_MB * 1024 * 1024:
             raise HTTPException(400, f"Each image must be below {settings.MAX_UPLOAD_MB} MB")

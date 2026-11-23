@@ -12,7 +12,7 @@ from app.agents import i18n
 from app.agents.agronomy import retrieve_approved_knowledge
 from app.agents.contracts import ChatOutput, finalize_response, step
 from app.agents.evidence_sources import knowledge_sources
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model, model_provider
 from app.agents.prompts import CHAT_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
 from app.agents.turn import Turn
@@ -80,15 +80,16 @@ def _attach_rag(out: dict[str, Any], knowledge: dict[str, Any]) -> dict[str, Any
     docs = knowledge.get("documents") or []
     titles = list(dict.fromkeys(str(d.get("title") or "") for d in docs if d.get("title")))
     trace = out.setdefault("agent_trace", [])
-    if retrieval == "hybrid_pgvector_fts" and docs:
+    if retrieval in {"hybrid_pgvector_fts", "published_keyword"} and docs:
         detail = f" from {', '.join(titles[:3])}" if titles else ""
-        trace.append(step("Agricultural Knowledge RAG", f"Retrieved {len(docs)} indexed evidence chunk(s){detail}"))
-        if not out.get("sources"):
-            out["sources"] = knowledge_sources(knowledge)
+        weak = retrieval == "published_keyword"
+        label = "published keyword match(es), verification needed" if weak else "indexed evidence chunk(s)"
+        trace.append(step("Agricultural Knowledge RAG", f"Retrieved {len(docs)} {label}{detail}", "watch" if weak else "complete"))
     elif retrieval == "approved_source_registry_fallback":
         trace.append(step("Agricultural Knowledge RAG", "No indexed evidence match was returned; only approved source pointers were available", "watch"))
     elif retrieval != "not_requested":
         trace.append(step("Agricultural Knowledge RAG", f"Knowledge retrieval status: {retrieval}", "watch"))
+    out["sources"] = knowledge_sources(knowledge)
     out["rag"] = {
         "retrieval": retrieval,
         "document_count": len(docs),
@@ -135,7 +136,7 @@ def run_chat(turn: Turn) -> dict[str, Any]:
         step("Intent Router", f"Kept the request in Simple Chat ({turn.route.intent})"),
         step("Conversation Memory", f"Used {min(len(turn.history), 18)} recent turn(s) and saved scenario facts"),
     ]
-    out["provider"] = "gemini"
+    out["provider"] = model_provider(model_used)
     out["model"] = model_used
     out["prompt_version"] = PROMPT_VERSION
     return _attach_rag(out, knowledge)

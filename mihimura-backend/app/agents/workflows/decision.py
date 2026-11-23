@@ -5,7 +5,7 @@ Pipeline (each step is deterministic except step 4):
 1. Tool Planner   — pick the minimum evidence tools for this intent.
 2. Specialists    — run the selected tools (in parallel where possible).
 3. Safety + evidence pre-checks — hazard/consequence flags, evidence score.
-4. Decision model — Gemini reasons over the evidence (or a localized
+4. Decision model — The model reasons over the evidence (or a localized
    deterministic answer when no model is available).
 5. Safety review  — strip unsupported rates, add required warnings and
    confirmation, replace model confidence with evidence-derived confidence.
@@ -19,7 +19,7 @@ from typing import Any
 from app.agents import i18n
 from app.agents.contracts import DecisionOutput, finalize_response, step
 from app.agents.evidence_sources import evidence_sources
-from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model
+from app.agents.llm import LLMError, LLMUnavailable, generate_structured_with_model, model_provider
 from app.agents.prompts import DECISION_SYSTEM_PROMPT, PROMPT_VERSION
 from app.agents.router import RouteDecision
 from app.agents.safety import enforce, precheck, review_rates
@@ -189,6 +189,7 @@ def run_decision(turn: Turn) -> dict[str, Any]:
     )
 
     provider_error: str | None = None
+    model_used = None
     try:
         out, model_used = generate_structured_with_model(
             tier="reasoning",
@@ -198,7 +199,7 @@ def run_decision(turn: Turn) -> dict[str, Any]:
             temperature=0.2,
         )
         out = review_rates(out, evidence.knowledge, safety)
-        out.update({"provider": "gemini", "model": model_used, "prompt_version": PROMPT_VERSION})
+        out.update({"provider": model_provider(model_used), "model": model_used, "prompt_version": PROMPT_VERSION})
         if not out.get("sources"):
             out["sources"] = evidence_sources(evidence.weather, evidence.climate, evidence.knowledge, market_used=bool(tool_plan.get("market")))
         out = enforce(out, safety)
@@ -221,7 +222,7 @@ def run_decision(turn: Turn) -> dict[str, Any]:
         step("Tool Planner", "Selected only: " + ", ".join(selected)),
         step("Farmer Context & Memory", f"Resolved {turn.context.get('context_scope', 'general')} context; {len(turn.history)} recent turn(s)"),
         *evidence.trace,
-        step("Decision Model", "Gemini reasoned over the collected evidence" if out.get("provider") == "gemini" else "Localized rule-based decision (model not used)", "complete" if out.get("provider") == "gemini" else "watch"),
+        step("Decision Model", f"{out['provider']} reasoned over the collected evidence" if model_used else "Localized rule-based decision (model not used)", "complete" if model_used else "watch"),
         *out["agent_trace"],
         step("Intervention & Safety", "Applied confirmation, rate-sensitive and no-invented-data guardrails"),
     ]

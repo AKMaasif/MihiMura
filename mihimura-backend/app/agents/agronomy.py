@@ -44,6 +44,7 @@ def retrieve_approved_knowledge(
     """
     rag = search_knowledge(question, crop=crop or None, language=language, top_k=8)
     if rag.get("available") and rag.get("results"):
+        retrieval = rag.get("retrieval") or "hybrid_pgvector_fts"
         documents: list[dict[str, Any]] = []
         for row in rag["results"]:
             documents.append(
@@ -63,7 +64,7 @@ def retrieve_approved_knowledge(
                     "hybrid_score": row.get("hybrid_score"),
                     "chunk_id": row.get("chunk_id"),
                     "document_id": row.get("document_id"),
-                    "source_type": "hybrid_rag",
+                    "source_type": "keyword_rag" if retrieval == "published_keyword" else "hybrid_rag",
                     "safe_note": "Use only claims supported by this retrieved excerpt; rate-sensitive or hazardous guidance still requires the current official label/protocol.",
                 }
             )
@@ -71,10 +72,11 @@ def retrieve_approved_knowledge(
             "query": question,
             "crop": crop or "not selected",
             "location": location,
-            "retrieval": "hybrid_pgvector_fts",
+            "retrieval": retrieval,
             "documents": documents,
             "evidence_quality": rag.get("evidence_quality") or {},
             "embedding_model": rag.get("embedding_model"),
+            "rag_status": rag.get("reason"),
             "grounding_rule": "Use retrieved excerpts as evidence. Do not invent a rate, product approval, warning, price or field measurement that is not explicitly supported by current evidence.",
         }
 

@@ -5,13 +5,14 @@ import io
 import math
 import re
 import time
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from uuid import uuid4
 
 from app.core.config import settings
-from app.services.embeddings import EmbeddingUnavailable, embed_query, embed_texts, embeddings_configured
+from app.services.embeddings import embed_query, embed_texts, embeddings_configured
 from app.supabase_client import service_client, supabase_configured
 
 try:
@@ -379,6 +380,78 @@ def _quality(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _query_words(text: str) -> list[str]:
+    normalized = unicodedata.normalize("NFC", text.casefold())
+    tokens = "".join(
+        c if unicodedata.category(c)[0] in {"L", "M", "N"} else " " for c in normalized
+    ).split()
+    stop_words = {"the", "and", "for", "how", "what", "with", "this", "that", "are", "should", "can"}
+    return list(dict.fromkeys(word for word in tokens if len(word) >= 3 and word not in stop_words))
+
+
+def _keyword_rows(
+    text: str, crop: str | None, language: str | None, authority: int, kind: str | None, limit: int,
+) -> list[dict[str, Any]]:
+    terms = _query_words(text[:1500])[:8]
+    if not terms:
+        return []
+    query = _table("knowledge_chunks").select(
+        "id,content,page_start,page_end,document_id,knowledge_documents!inner("
+        "title,authority,authority_tier,source_url,version_label,published_at,"
+        "crop,region,district,status,document_type,language)"
+    )
+    query = (query.eq("knowledge_documents.status", "published")
+             .lte("knowledge_documents.authority_tier", authority)
+             .is_("knowledge_documents.region", "null")
+             .is_("knowledge_documents.district", "null"))
+    if crop:
+        query = query.eq("knowledge_documents.crop", crop)
+    else:
+        query = query.is_("knowledge_documents.crop", "null")
+    if language:
+        query = query.eq("knowledge_documents.language", language)
+    if kind:
+        query = query.eq("knowledge_documents.document_type", kind)
+    query = query.or_(",".join(f"content.ilike.*{term}*" for term in terms))
+    matches: list[tuple[int, dict[str, Any]]] = []
+    for raw in query.order("id").limit(80).execute().data or []:
+        document = raw.get("knowledge_documents") or {}
+        if document.get("status") != "published":
+            continue
+        count = len(set(terms).intersection(_query_words(str(raw.get("content") or ""))))
+        if count >= min(len(terms), 2):
+            chunk = {key: val for key, val in raw.items() if key != "knowledge_documents"}
+            matches.append((count, {**document, **chunk, "chunk_id": chunk["id"]}))
+    matches.sort(key=lambda pair: (-pair[0], int(pair[1].get("authority_tier") or 4)))
+    return [row for _, row in matches[:limit]]
+
+
+def _citations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        excerpt = _normalize_text(str(row.get("content") or ""))
+        if len(excerpt) > settings.RAG_MAX_EXCERPT_CHARS:
+            excerpt = excerpt[: settings.RAG_MAX_EXCERPT_CHARS].rstrip() + "…"
+        page_start, page_end = row.get("page_start"), row.get("page_end")
+        if page_start and page_end and page_start != page_end:
+            location_label = f"pp. {page_start}-{page_end}"
+        elif page_start:
+            location_label = f"p. {page_start}"
+        else:
+            location_label = None
+        results.append(
+            {
+                **row,
+                "excerpt": excerpt,
+                "location_label": location_label,
+                "citation_label": " — ".join(
+                    x for x in [str(row.get("authority") or ""), str(row.get("title") or ""), location_label or ""] if x
+                ),
+            }
+        )
+    return results
+
+
 def search_knowledge(
     query: str,
     *,
@@ -393,60 +466,49 @@ def search_knowledge(
         return {"available": False, "results": [], "reason": "empty_query", "evidence_quality": _quality([])}
     if not supabase_configured():
         return {"available": False, "results": [], "reason": "supabase_not_configured", "evidence_quality": _quality([])}
-    if not embeddings_configured():
-        return {"available": False, "results": [], "reason": "embeddings_not_configured", "evidence_quality": _quality([])}
 
     limit = max(1, min(int(top_k or settings.RAG_TOP_K), 20))
+    authority = max(1, min(int(max_authority_tier), 4))
+    match_language = language if strict_language else None
+    if embeddings_configured():
+        try:
+            vector = embed_query(query)
+            params = {
+                "query_text": query,
+                "query_embedding": vector,
+                "match_count": limit,
+                "filter_crop": crop or None,
+                # Default is intentionally cross-language. Gemini retrieval embeddings are
+                # multilingual, so Sinhala/Tamil questions can retrieve authoritative English
+                # material. strict_language can be used by admin/test tools when desired.
+                "filter_language": language if strict_language and language else None,
+                "max_authority_tier": max(1, min(int(max_authority_tier), 4)),
+                "filter_document_type": document_type or None,
+            }
+            rows = service_client().rpc("search_knowledge_hybrid", params).execute().data or []
+            results = _citations(rows)
+            return {
+                "available": True,
+                "retrieval": "hybrid_pgvector_fts",
+                "query": query,
+                "results": results,
+                "evidence_quality": _quality(results),
+                "embedding_model": settings.GEMINI_EMBEDDING_MODEL,
+                "embedding_dimension": settings.EMBEDDING_DIMENSION,
+            }
+        except Exception:
+            fallback_reason = "vector_search_unavailable"
+    else:
+        fallback_reason = "embeddings_not_configured"
+
     try:
-        vector = embed_query(query)
-        params = {
-            "query_text": query,
-            "query_embedding": vector,
-            "match_count": limit,
-            "filter_crop": crop or None,
-            # Default is intentionally cross-language. Gemini retrieval embeddings are
-            # multilingual, so Sinhala/Tamil questions can retrieve authoritative English
-            # material. strict_language can be used by admin/test tools when desired.
-            "filter_language": language if strict_language and language else None,
-            "max_authority_tier": max(1, min(int(max_authority_tier), 4)),
-            "filter_document_type": document_type or None,
-        }
-        rows = service_client().rpc("search_knowledge_hybrid", params).execute().data or []
-        results: list[dict[str, Any]] = []
-        for row in rows:
-            excerpt = _normalize_text(str(row.get("content") or ""))
-            if len(excerpt) > settings.RAG_MAX_EXCERPT_CHARS:
-                excerpt = excerpt[: settings.RAG_MAX_EXCERPT_CHARS].rstrip() + "…"
-            page_start, page_end = row.get("page_start"), row.get("page_end")
-            if page_start and page_end and page_start != page_end:
-                location_label = f"pp. {page_start}-{page_end}"
-            elif page_start:
-                location_label = f"p. {page_start}"
-            else:
-                location_label = None
-            results.append(
-                {
-                    **row,
-                    "excerpt": excerpt,
-                    "location_label": location_label,
-                    "citation_label": " — ".join(
-                        x for x in [str(row.get("authority") or ""), str(row.get("title") or ""), location_label or ""] if x
-                    ),
-                }
-            )
+        results = _citations(_keyword_rows(query, crop, match_language, authority, document_type, limit))
         return {
-            "available": True,
-            "retrieval": "hybrid_pgvector_fts",
-            "query": query,
-            "results": results,
-            "evidence_quality": _quality(results),
-            "embedding_model": settings.GEMINI_EMBEDDING_MODEL,
-            "embedding_dimension": settings.EMBEDDING_DIMENSION,
+            "available": True, "retrieval": "published_keyword", "query": query,
+            "results": results, "reason": fallback_reason, "evidence_quality": _quality(results),
         }
-    except EmbeddingUnavailable as exc:
-        return {"available": False, "results": [], "reason": str(exc), "evidence_quality": _quality([])}
-    except Exception as exc:
-        return {"available": False, "results": [], "reason": f"knowledge_search_failed: {exc}", "evidence_quality": _quality([])}
+    except Exception:
+        return {"available": False, "results": [], "reason": "knowledge_search_failed", "evidence_quality": _quality([])}
 
 
 # ---------------------------------------------------------------------------

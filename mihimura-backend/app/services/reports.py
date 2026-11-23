@@ -20,9 +20,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from pydantic import BaseModel, Field
 
 from app.agents.agronomy import retrieve_approved_knowledge
-from app.agents.llm import generate_structured
+from app.agents.llm import generate_structured, llm_available
 from app.agents.prompts import REPORT_SYSTEM_PROMPT, translation_system_prompt
-from app.core.ai import get_gemini_client
 from app.core.config import settings
 from app.db import audit, now_iso
 from app.services.climate_history import get_nasa_power
@@ -609,14 +608,14 @@ def _report_payload(
     market: dict[str, Any],
     resources: dict[str, Any],
 ) -> dict[str, Any]:
-    client = get_gemini_client()
+    client = None
     fallback = _ensure_section_keys(_fallback_report(facts, weather, climate, knowledge, economics, market, resources))
     target_language = normalize_language(facts.get("language") or "English")
-    if client is None:
+    if not llm_available():
         if target_language == "English":
             return fallback
         raise RuntimeError(
-            f"{target_language} report generation requires GEMINI_API_KEY because the deterministic report source is English and must be localized safely."
+            f"{target_language} report generation requires a configured text model because the deterministic report source is English and must be localized safely."
         )
 
     evidence = {
@@ -653,7 +652,7 @@ def _report_payload(
     except Exception as exc:
         logger.warning("structured report composition failed language=%s error=%s", target_language, exc)
 
-    # English remains fully deterministic if Gemini is unavailable or malformed.
+    # English remains fully deterministic if the provider is unavailable or malformed.
     if target_language == "English":
         return fallback
 

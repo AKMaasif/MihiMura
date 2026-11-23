@@ -40,17 +40,21 @@ def get_current_user(
             name = "Farmer"
             if isinstance(metadata, dict):
                 name = str(metadata.get("full_name") or metadata.get("name") or name)
+        except Exception as exc:
+            status = getattr(exc, "status", None) or getattr(exc, "status_code", None)
+            if isinstance(exc, ValueError) or status in {400, 401, 403}:
+                raise HTTPException(status_code=401, detail="Invalid or expired Supabase session") from exc
+            raise HTTPException(status_code=503, detail="Supabase authentication is temporarily unavailable") from exc
+        try:
             ensure_user(uid=uid, email=email, name=name, provider=_provider(user), metadata=metadata)
             profile = get_user(uid)
-            if profile.get("status") in {"suspended", "deleted"}:
-                raise HTTPException(status_code=403, detail="This MihiMura account is not active")
-            return profile
-        except HTTPException:
-            raise
         except Exception as exc:
-            raise HTTPException(status_code=401, detail=f"Invalid or expired Supabase session: {exc}") from exc
+            raise HTTPException(status_code=503, detail="Your MihiMura profile could not be loaded. Try again.") from exc
+        if profile.get("status") in {"suspended", "deleted"}:
+            raise HTTPException(status_code=403, detail="This MihiMura account is not active")
+        return profile
 
-    if settings.DEMO_MODE:
+    if settings.DEMO_MODE and x_demo_user == DEMO_UID:
         # Demo access is deliberately a single fixed identity. Never accept an
         # arbitrary UUID from a browser header as an impersonation mechanism.
         uid = DEMO_UID

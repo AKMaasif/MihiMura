@@ -14,6 +14,8 @@ def knowledge_sources(knowledge: dict[str, Any], limit: int = 6) -> list[dict[st
         page = doc.get("page")
         if retrieval == "hybrid_pgvector_fts" or doc.get("source_type") == "hybrid_rag":
             freshness = "indexed evidence" + (f" · {page}" if page else "")
+        elif retrieval == "published_keyword":
+            freshness = "keyword match · verify before acting" + (f" · {page}" if page else "")
         else:
             freshness = "reference link only · source text not retrieved in this turn"
         items.append({
